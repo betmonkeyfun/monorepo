@@ -29,7 +29,7 @@ export default function ScrollSections() {
             trigger: welcomeRef.current,
             start: 'top top',
             end: '20% top',
-            scrub: true,
+            scrub: 3,  // WAY slower scroll
             markers: false, // Set to true for debugging
           },
         }
@@ -43,7 +43,7 @@ export default function ScrollSections() {
           trigger: welcomeRef.current,
           start: '20% top',
           end: '40% top',
-          scrub: true,
+          scrub: 3,  // WAY slower scroll
         },
       });
     }
@@ -61,7 +61,7 @@ export default function ScrollSections() {
             trigger: gamesRef.current,
             start: '40% top',
             end: '60% top',
-            scrub: true,
+            scrub: 3,  // WAY slower scroll
             pin: false,
           },
         }
@@ -80,7 +80,7 @@ export default function ScrollSections() {
             trigger: gamesRef.current,
             start: '50% top',
             end: '80% top',
-            scrub: true,
+            scrub: 3,  // WAY slower scroll
           },
         }
       );

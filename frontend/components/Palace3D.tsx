@@ -113,8 +113,9 @@ function PalaceModel({ scrollProgress }: { scrollProgress: React.MutableRefObjec
   });
 
   return (
-    <group ref={group} position={[0, 0.5, 0]} rotation={[0, 0, 0]}>
+    <group ref={group} position={[0, 0.5, 0]} rotation={[0, -Math.PI / 12, 0]}>
       {/* The loaded palace model is added in useEffect */}
+      {/* Rotated -15 degrees on Y axis - sweet spot between left and right */}
     </group>
   );
 }
@@ -145,14 +146,14 @@ function CasinoParticles() {
     particlesRef.current.rotation.y += 0.0002;
   });
 
+  const particlePositions = new Float32Array(1000 * 3);
+
   return (
     <points ref={particlesRef}>
       <bufferGeometry>
         <bufferAttribute
           attach="attributes-position"
-          count={1000}
-          array={new Float32Array(1000 * 3)}
-          itemSize={3}
+          args={[particlePositions, 3]}
         />
       </bufferGeometry>
       <pointsMaterial
@@ -173,20 +174,20 @@ function CameraController({ scrollProgress }: { scrollProgress: React.MutableRef
   useFrame(() => {
     const progress = scrollProgress.current;
 
-    // 0% to 20%: Zoom EVEN CLOSER into palace entrance
+    // 0% to 20%: Zoom EVEN CLOSER into palace entrance (centered on door)
     if (progress <= 0.2) {
       const zoomProgress = progress / 0.2;
       camera.position.z = THREE.MathUtils.lerp(12, 4, zoomProgress);
       camera.position.y = THREE.MathUtils.lerp(2, 1, zoomProgress);
-      camera.position.x = 0;
-      camera.lookAt(0, 1, 0);
+      camera.position.x = THREE.MathUtils.lerp(0, -0.2, zoomProgress); // Slight left offset for new rotation
+      camera.lookAt(0, 0.9, 0); // Look at center door entrance
     }
     // 20% to 40%: Hold CLOSE position for door opening
     else if (progress <= 0.4) {
       camera.position.z = 4;
       camera.position.y = 1;
-      camera.position.x = 0;
-      camera.lookAt(0, 1, 0);
+      camera.position.x = -0.2;
+      camera.lookAt(0, 0.9, 0); // Keep looking at door
     }
     // 40% to 60%: Rotate around palace
     else if (progress <= 0.6) {

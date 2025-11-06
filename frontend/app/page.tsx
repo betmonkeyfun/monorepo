@@ -4,6 +4,7 @@ import { useRef, useEffect } from 'react';
 import dynamic from 'next/dynamic';
 import gsap from 'gsap';
 import { ScrollTrigger } from 'gsap/ScrollTrigger';
+import Lenis from 'lenis';
 import ScrollSections from '@/components/ScrollSections';
 import StickyNavbar from '@/components/StickyNavbar';
 
@@ -29,6 +30,24 @@ export default function Home() {
   const scrollProgress = useRef<number>(0);
 
   useEffect(() => {
+    // Initialize Lenis smooth scroll with SLOW damping
+    const lenis = new Lenis({
+      duration: 2.5,  // How long the scroll animation takes
+      easing: (t) => Math.min(1, 1.001 - Math.pow(2, -10 * t)), // easeOutExpo
+      smoothWheel: true,  // Enable smooth wheel scrolling
+      wheelMultiplier: 0.6,  // Slow down wheel scroll speed (lower = slower)
+      touchMultiplier: 1.5,  // Touch scroll speed
+    });
+
+    // Connect Lenis to GSAP ScrollTrigger
+    lenis.on('scroll', ScrollTrigger.update);
+
+    gsap.ticker.add((time) => {
+      lenis.raf(time * 1000);
+    });
+
+    gsap.ticker.lagSmoothing(0);
+
     // Pin the 3D canvas during scroll (0-60%)
     const pinTrigger = ScrollTrigger.create({
       trigger: canvasContainerRef.current,
@@ -36,7 +55,7 @@ export default function Home() {
       end: '60% top',
       pin: true,
       pinSpacing: false,
-      scrub: true,
+      scrub: 3,  // WAY slower scroll - higher number = more delay/smoothness
       markers: false, // Set to true for debugging
       onUpdate: (self) => {
         scrollProgress.current = self.progress;
@@ -51,19 +70,13 @@ export default function Home() {
           trigger: canvasContainerRef.current,
           start: '60% top',
           end: '80% top',
-          scrub: true,
+          scrub: 3,  // WAY slower scroll
         },
       });
     }
 
-    // Smooth scrolling
-    const lenis = () => {
-      window.scrollTo({
-        behavior: 'smooth',
-      });
-    };
-
     return () => {
+      lenis.destroy();
       pinTrigger.kill();
       ScrollTrigger.getAll().forEach((trigger) => trigger.kill());
     };
