@@ -1,352 +1,212 @@
-# x402 Solana Protocol Implementation
+# BetMonkey
 
-A TypeScript implementation of the x402 payment protocol for Solana blockchain, featuring instant finality, sponsored transactions, and replay attack protection.
+A decentralized betting platform built on Solana blockchain with instant payment settlement using the x402 protocol.
 
 ## Overview
 
-The x402 protocol enables payment-gated access to web resources through Solana blockchain payments. This implementation provides:
+BetMonkey leverages Solana's high-performance blockchain and the x402 payment protocol to enable instant, trustless betting with micropayments. The platform features:
 
-- **Instant Finality**: Client funds move immediately to merchant (on-chain settlement)
-- **Sponsored Transactions**: Facilitator pays gas fees, client authorizes SOL transfer
+- **Instant Settlement**: On-chain payment finality using Solana
+- **Sponsored Transactions**: Facilitator pays gas fees for seamless UX
 - **Replay Protection**: Cryptographic nonce system prevents duplicate payments
-- **TypeScript**: Full type safety with Zod validation
-- **Production Ready**: PM2 process management, structured logging, error handling
+- **Decentralized**: No custodial wallets, users maintain control of funds
+- **Low Fees**: Leverages Solana's low transaction costs
 
 ## Architecture
 
 ```
-┌─────────────────┐         ┌──────────────┐         ┌─────────────────┐
-│                 │  HTTP   │              │  HTTP   │                 │
-│  Client App     │────────>│ Server App   │────────>│ Facilitator App │
-│                 │         │              │         │                 │
-│ • Signs auth    │         │ • x402 mw    │         │ • Verifies sig  │
-│ • Signs tx      │         │ • Protected  │         │ • Adds fee sig  │
-│ • Sends both    │         │   routes     │         │ • Broadcasts tx │
-└─────────────────┘         └──────────────┘         └─────────────────┘
-                                                                            │
-                                                                            ▼
-                                                                 ┌─────────────────┐
-                                                      │  Solana Devnet  │
-                                                      │  (Blockchain)   │
-                                                                 └─────────────────┘
+┌─────────────────┐         ┌──────────────────┐         ┌─────────────────┐
+│   Web Frontend  │  HTTP   │  Payment Server  │  HTTP   │   Facilitator   │
+│   (Next.js)     │────────>│   (Express)      │────────>│   (Express)     │
+│                 │         │                  │         │                 │
+│ • User wallet   │         │ • x402 protocol  │         │ • Verifies tx   │
+│ • Betting UI    │         │ • Protected APIs │         │ • Sponsors gas  │
+│ • Sign tx/auth  │         │ • Game logic     │         │ • Broadcasts    │
+└─────────────────┘         └──────────────────┘         └─────────────────┘
+                                                                    │
+                                                                    ▼
+                                                         ┌─────────────────┐
+                                                         │ Solana Blockchain│
+                                                         │   (Devnet/Main)  │
+                                                         └─────────────────┘
 ```
 
-### Flow
-
-1. **Client** creates and signs Solana transaction (client -> merchant transfer)
-2. **Client** signs authorization payload (for replay protection)
-3. **Client** sends both to server via HTTP header
-4. **Server** middleware extracts payment and forwards to facilitator
-5. **Facilitator** verifies signatures and checks nonce
-6. **Facilitator** adds signature as fee payer (sponsors transaction)
-7. **Facilitator** broadcasts to Solana blockchain
-8. **Instant Settlement**: Client's SOL moves to merchant on-chain
-9. **Server** delivers protected resource
-
-## Project Structure
+## Monorepo Structure
 
 ```
-x402_ts/
-├── src/
-│   ├── facilitator/
-│   │   ├── index.ts                # Main facilitator app entry
-│   │   └── nonce.db                # SQLite database (runtime, gitignored)
-│   ├── server/
-│   │   └── index.ts                # Main server app entry
-│   ├── errors/
-│   │   └── index.ts                # Custom error classes
-│   ├── lib/
-│   │   ├── api-logger.ts           # Structured logging
-│   │   ├── api-response-helpers.ts # Standardized responses
-│   │   ├── get-facilitator-config.ts  # Zod config validation
-│   │   ├── get-facilitator-context.ts # Dependency injection
-│   │   ├── get-server-config.ts    # Server config validation
-│   │   ├── get-server-context.ts   # Server context
-│   │   ├── nonce-database.ts       # SQLite nonce management
-│   │   ├── payment-request.ts      # Payment payload structures
-│   │   ├── solana-utils.ts         # Solana/Gill SDK utilities
-│   │   └── x402-middleware.ts      # Express middleware
-│   └── routes/
-│       ├── health.ts               # Health check endpoint
-│       ├── verify.ts               # Payment verification
-│       ├── settle.ts               # Payment settlement
-│       ├── nonce.ts                # Nonce management
-│       ├── stats.ts                # Statistics
-│       └── index.ts                # Route exports
-├── dist/                           # Compiled TypeScript output (gitignored)
-├── logs/                           # PM2 log files (gitignored)
-├── test-true-x402.mjs              # TRUE x402 instant finality test
-├── test-replay-attack.mjs          # Replay attack prevention test
-├── test-402-response.mjs           # HTTP 402 response test
-├── generate-test-client.mjs        # Generate test client wallet
-├── ecosystem.config.cjs            # PM2 configuration
-├── package.json                    # Dependencies and scripts
-├── tsconfig.json                   # TypeScript configuration
-└── .env                            # Environment configuration
+betmonkey/
+├── server/              # x402 payment server & facilitator
+│   ├── src/
+│   │   ├── facilitator/ # Payment facilitator service
+│   │   ├── server/      # Game/betting server
+│   │   ├── lib/         # Shared utilities
+│   │   └── routes/      # API endpoints
+│   ├── package.json
+│   └── README.md        # Detailed server documentation
+├── web/                 # Web frontend (Next.js)
+│   ├── package.json
+│   └── README.md
+├── package.json         # Root monorepo config
+└── README.md           # This file
 ```
 
 ## Quick Start
 
-### 1. Install Dependencies
+### Prerequisites
+
+- Node.js 18+ and npm 9+
+- Solana CLI (for generating keypairs and funding wallets)
+- A Solana wallet with devnet SOL
+
+### Installation
 
 ```bash
+# Clone the repository
+git clone https://github.com/yourusername/betmonkey.git
+cd betmonkey
+
+# Install all dependencies (uses npm workspaces)
 npm install
 ```
 
-### 2. Configure Environment
+### Configure Server
 
 ```bash
+cd server
+
+# Generate facilitator keypair
+solana-keygen new --outfile facilitator-keypair.json
+
+# Copy and configure environment
 cp env.example .env
-# Edit .env with your configuration
+# Edit .env with your configuration:
+# - FACILITATOR_PRIVATE_KEY (from facilitator-keypair.json)
+# - MERCHANT_SOLANA_ADDRESS (your merchant wallet)
+# - SOLANA_RPC_URL (default: devnet)
+
+# Fund facilitator wallet on devnet
+solana airdrop 2 <FACILITATOR_PUBLIC_KEY> --url devnet
 ```
 
-Required environment variables:
+### Run the Platform
 
-- `FACILITATOR_PRIVATE_KEY` - Facilitator's private key (base58)
-- `SOLANA_RPC_URL` - Solana RPC endpoint (default: devnet)
-- `SIMULATE_TRANSACTIONS` - Set to `false` for real blockchain transactions
+```bash
+# From root directory
 
-### 3. Build TypeScript
+# Start server (facilitator + payment server)
+npm run dev:server
+
+# In another terminal, start web frontend
+npm run dev:web
+```
+
+The services will be available at:
+- Payment Server: http://localhost:3000
+- Facilitator: http://localhost:3001
+- Web Frontend: http://localhost:3000 (or next available port)
+
+## Development
+
+### Build All Packages
 
 ```bash
 npm run build
 ```
 
-### 4. Start Applications
+### Run Tests
 
 ```bash
-# Start both facilitator and server with PM2
-npm start
-
-# View logs
-npm run logs
-
-# Stop applications
-npm stop
-```
-
-The facilitator runs on port 3001, server on port 3000 (configurable in .env).
-
-## Testing
-
-### Run All Tests
-
-```bash
-# Make sure apps are running first
-npm start
-
-# Run main test (TRUE x402 instant finality)
+# Run all tests
 npm test
 
-# Test HTTP 402 response (missing payment)
-npm run test:402
-
-# Test replay attack prevention
-npm run test:replay
-```
-
-### Generate Test Client Wallet
-
-```bash
-npm run generate:client
-# Creates test-client-keypair.json with a new wallet
-```
-
-### Fund Test Wallet on Devnet
-
-```bash
-solana airdrop 1 <YOUR_CLIENT_PUBLIC_KEY> --url devnet
-```
-
-## How It Works
-
-### TRUE x402 Protocol (Instant Finality)
-
-This implementation uses **sponsored transactions** for TRUE x402 instant finality:
-
-1. **Client Side**:
-   - Creates authorization payload with nonce
-   - Signs authorization (Ed25519 signature for replay protection)
-   - Creates Solana transaction (client -> merchant transfer)
-   - Signs transaction with their private key
-   - Sends both to server
-
-2. **Facilitator Side**:
-   - Verifies authorization signature
-   - Checks nonce is unused (prevents replay attacks)
-   - Marks nonce as used immediately
-   - Deserializes client-signed transaction
-   - Adds facilitator signature as fee payer
-   - Broadcasts to Solana blockchain
-   - Client's SOL moves to merchant instantly
-
-3. **Result**:
-   - Client's funds committed on-chain (instant finality)
-   - Facilitator paid gas fee
-   - No debt tracking needed
-   - Single atomic transaction
-
-### Payment Request Structure
-
-```typescript
-{
-  payload: {
-    amount: "10000000",           // Amount in lamports
-    recipient: "merchant_address", // Merchant Solana address
-    resourceId: "/api/resource",   // Resource identifier
-    resourceUrl: "/api/resource",  // Resource URL
-    nonce: "unique_hex_string",    // Cryptographic nonce
-    timestamp: 1234567890,         // Unix timestamp
-    expiry: 1234571490             // Expiration timestamp
-  },
-  signature: "base58_signature",   // Client's Ed25519 signature
-  clientPublicKey: "client_pub",   // Client's Solana public key
-  signedTransaction: "base64_tx"   // Client-signed Solana transaction
-}
-```
-
-### Nonce System (Replay Protection)
-
-The nonce database prevents replay attacks:
-
-- Each payment request includes a unique nonce
-- Nonce is stored and marked as "used" during verification
-- Subsequent requests with same nonce are rejected
-- Nonces expire after 24 hours (configurable)
-- Automatic cleanup removes expired nonces
-
-### Protected Endpoints
-
-The server provides examples of payment-protected routes:
-
-```typescript
-// Public endpoint (no payment required)
-GET /public
-
-// Protected endpoint (requires x402 payment)
-GET /api/premium-data
-  - Requires 0.01 SOL payment
-  - Returns premium content after payment verification
-
-// Other protected routes
-POST /api/generate-content
-GET /api/download/:fileId
-GET /api/tier/:tier
-```
-
-## API Reference
-
-### Facilitator Endpoints
-
-**Health Check**
-
-```
-GET /health
-Response: { success: true, data: { status: "healthy", ... } }
-```
-
-**Verify Payment**
-
-```
-POST /verify
-Body: { paymentRequest: "serialized_payment_request" }
-Response: { success: true, data: { verified: true, ... } }
-```
-
-**Settle Payment**
-
-```
-POST /settle
-Body: { paymentRequest: "serialized_payment_request" }
-Response: { success: true, data: { transactionSignature: "...", ... } }
-```
-
-**Get Nonce Status**
-
-```
-GET /nonce/:nonce
-Response: { success: true, data: { nonce: "...", usedAt: ..., ... } }
-```
-
-**Get Statistics**
-
-```
-GET /stats
-Response: {
-  success: true,
-  data: {
-    totalNonces: 25,
-    usedNonces: 25,
-    activeNonces: 0
-  }
-}
-```
-
-### Server Endpoints
-
-**Health Check**
-
-```
-GET /health
-Response: { success: true, data: { status: "healthy", facilitator: {...} } }
-```
-
-**Public Endpoint**
-
-```
-GET /public
-Response: { success: true, data: { message: "No payment required" } }
-```
-
-**Protected Endpoint**
-
-```
-GET /api/premium-data
-Headers: { X-Payment: "serialized_payment_request" }
-Response: { success: true, data: { secret: "premium content", ... } }
-```
-
-## Development
-
-### Run in Development Mode
-
-```bash
-# Terminal 1: Facilitator
-npm run dev:facilitator
-
-# Terminal 2: Server
-npm run dev:server
+# Test specific workspace
+npm test --workspace=server
 ```
 
 ### Code Quality
 
 ```bash
-# Run linter
+# Lint all packages
 npm run lint
 
-# Format code
+# Format all packages
 npm run fmt
 
 # Check formatting
 npm run fmt:check
 ```
 
-### Technology Stack
+### Development Mode
 
-- **Runtime**: Node.js with TypeScript
-- **Framework**: Express.js
-- **Blockchain**: Solana (via Gill SDK and @solana/web3.js)
-- **Database**: SQLite3 (for nonce management)
-- **Process Management**: PM2
-- **Validation**: Zod
-- **Logging**: Structured logging with timestamps
-- **Testing**: Custom test scripts using native fetch
+```bash
+# Run server in watch mode
+npm run dev:server
 
-## Configuration
+# Run web in development mode
+npm run dev:web
 
-### Environment Variables
+# Or run both (requires tmux or separate terminals)
+npm run dev
+```
 
-See `env.example` for all available configuration options:
+## How It Works
+
+### x402 Payment Protocol
+
+1. **User Action**: User initiates bet/action on web frontend
+2. **Payment Request**: Frontend creates Solana transaction + auth signature
+3. **Server Validation**: Payment server validates via facilitator
+4. **Facilitator Processing**:
+   - Verifies signatures
+   - Checks nonce (prevents replays)
+   - Adds sponsor signature for gas
+   - Broadcasts to Solana
+5. **Instant Settlement**: Funds transfer on-chain immediately
+6. **Resource Delivery**: Server delivers protected resource/executes bet
+
+### Key Features
+
+**Instant Finality**
+- No debt tracking or escrow needed
+- Client funds commit on-chain atomically
+- Single transaction model
+
+**Replay Protection**
+- Cryptographic nonces stored in SQLite
+- One-time use enforcement
+- Automatic expiry and cleanup
+
+**Sponsored Transactions**
+- Facilitator pays gas fees
+- Users only sign transfers
+- Seamless UX without SOL for gas
+
+## Documentation
+
+- [Server Documentation](./server/README.md) - Detailed x402 implementation guide
+- [Server Setup Guide](./server/SETUP.md) - Step-by-step server configuration
+- [Web Documentation](./web/README.md) - Frontend development guide
+
+## Tech Stack
+
+### Server
+- Node.js + TypeScript
+- Express.js
+- Solana (Gill SDK + @solana/web3.js)
+- SQLite3 (nonce database)
+- PM2 (process management)
+- Zod (validation)
+
+### Web
+- Next.js 14
+- React 18
+- TypeScript
+- Solana Web3.js
+- Wallet Adapter
+
+## Environment Variables
+
+### Server (.env)
 
 ```env
 # Facilitator
@@ -356,7 +216,7 @@ SOLANA_RPC_URL=https://api.devnet.solana.com
 SIMULATE_TRANSACTIONS=false
 MAX_PAYMENT_AMOUNT=1000000000
 
-# Server
+# Payment Server
 SERVER_PORT=3000
 FACILITATOR_URL=http://localhost:3001
 MERCHANT_SOLANA_ADDRESS=<merchant_public_key>
@@ -365,73 +225,86 @@ MERCHANT_SOLANA_ADDRESS=<merchant_public_key>
 SOLANA_NETWORK=devnet
 ```
 
-### PM2 Configuration
+### Web (.env.local)
 
-The `ecosystem.config.cjs` file configures PM2 process management:
+```env
+NEXT_PUBLIC_API_URL=http://localhost:3000
+NEXT_PUBLIC_FACILITATOR_URL=http://localhost:3001
+NEXT_PUBLIC_SOLANA_NETWORK=devnet
+NEXT_PUBLIC_SOLANA_RPC_URL=https://api.devnet.solana.com
+```
 
-- Auto-restart on crashes
-- Environment variable loading
-- Separate log files for each app
-- Memory limits and monitoring
+## Deployment
 
-## Troubleshooting
+### Server
 
-### Common Issues
+The server can be deployed using PM2 or any Node.js hosting platform:
 
-**Apps won't start**
+```bash
+cd server
+npm run build
+npm start  # Uses PM2
+```
 
-- Check `.env` file exists and has valid `FACILITATOR_PRIVATE_KEY`
-- Ensure ports 3000 and 3001 are available
-- Check PM2 logs: `npm run logs`
+### Web
 
-**Tests fail with "insufficient SOL"**
+Deploy to Vercel, Netlify, or any static hosting:
 
-- Fund test client wallet: `solana airdrop 1 <address> --url devnet`
-- Check `SIMULATE_TRANSACTIONS=false` in `.env`
+```bash
+cd web
+npm run build
+npm start  # Or deploy the .next folder
+```
 
-**Replay attack test succeeds twice**
+## Security
 
-- Restart facilitator to reset nonce database
-- Check facilitator logs for nonce verification
-
-**Transaction fails on-chain**
-
-- Ensure facilitator has SOL for gas fees
-- Check Solana devnet is operational
-- Verify RPC endpoint is accessible
-
-## Security Considerations
-
-- **Private Keys**: Never commit `.env` or keypair files to git
-- **Nonce Database**: Stored locally, contains transaction history
+- **Private Keys**: Never commit `.env` or keypair files
 - **HTTPS**: Use HTTPS in production for all HTTP communication
-- **Rate Limiting**: Implement rate limiting on facilitator endpoints
+- **Rate Limiting**: Implement on facilitator endpoints
 - **Input Validation**: All inputs validated with Zod schemas
-- **Error Handling**: Structured errors without sensitive data exposure
+- **Nonce Database**: Prevents replay attacks
+- **Wallet Integration**: Users control their private keys
 
-## License
+## Roadmap
 
-MIT
+- [ ] Complete web frontend implementation
+- [ ] Add betting game logic
+- [ ] Multi-player support
+- [ ] Leaderboards and statistics
+- [ ] Mobile app (React Native)
+- [ ] Mainnet deployment
+- [ ] Additional payment methods
 
 ## Contributing
 
-This implementation follows the Gill Node Express template patterns and addresses PR feedback for clean, maintainable code. Contributions should maintain:
+Contributions are welcome! Please follow these guidelines:
 
-- TypeScript with strict type checking
-- ES modules (import/export)
-- Structured error handling
-- Native fetch (no axios)
-- Direct module consumption (no HTTP calls to own endpoints)
-- PM2 process management
-- Zod validation
-- Context pattern for dependency injection
+1. Fork the repository
+2. Create a feature branch
+3. Follow existing code style (TypeScript, ES modules)
+4. Write tests for new features
+5. Run `npm run lint` and `npm run fmt`
+6. Submit a pull request
+
+## License
+
+MIT License - see LICENSE file for details
 
 ## Credits
 
 Built with:
-
 - [Gill SDK](https://www.gillsdk.com/) - Solana TypeScript SDK
 - [@solana/web3.js](https://github.com/solana-labs/solana-web3.js) - Solana JavaScript API
-- [Express.js](https://expressjs.com/) - Web framework
+- [Express.js](https://expressjs.com/) - Backend framework
+- [Next.js](https://nextjs.org/) - React framework
 - [PM2](https://pm2.keymetrics.io/) - Process manager
-- [Zod](https://github.com/colinhacks/zod) - Schema validation
+
+## Support
+
+For issues and questions:
+- GitHub Issues: https://github.com/yourusername/betmonkey/issues
+- Documentation: See `/server/README.md` and `/web/README.md`
+
+## Acknowledgments
+
+This project was built for the Solana Hackathon. Special thanks to the Solana and Gill SDK communities.
