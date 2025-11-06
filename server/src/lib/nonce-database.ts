@@ -47,13 +47,25 @@ export interface NonceUsedStatus {
 
 /**
  * Nonce Database Manager
+ * Can work with either its own database connection or a shared one
  */
 export class NonceDatabase {
   private db: sqlite3.Database | null = null;
-  private dbPath: string;
+  private dbPath: string | null;
+  private ownConnection: boolean;
 
-  constructor(dbPath: string) {
-    this.dbPath = dbPath;
+  /**
+   * @param dbPathOrInstance - Either a path to database file OR an existing sqlite3.Database instance
+   */
+  constructor(dbPathOrInstance: string | sqlite3.Database) {
+    if (typeof dbPathOrInstance === 'string') {
+      this.dbPath = dbPathOrInstance;
+      this.ownConnection = true;
+    } else {
+      this.db = dbPathOrInstance;
+      this.dbPath = null;
+      this.ownConnection = false;
+    }
   }
 
   /**
@@ -61,31 +73,43 @@ export class NonceDatabase {
    */
   async initialize(): Promise<void> {
     return new Promise((resolve, reject) => {
-      this.db = new sqlite3.Database(this.dbPath, (err) => {
-        if (err) {
-          console.error('Error opening database:', err);
-          reject(new DatabaseError(`Failed to open database: ${err.message}`));
-          return;
-        }
+      // If using shared connection, tables should already exist
+      if (!this.ownConnection && this.db) {
+        console.log('Using shared database connection for nonces');
+        resolve();
+        return;
+      }
 
-        this.createTables()
-          .then(() => {
-            console.log('Nonce database initialized successfully');
-            // Verify the table structure
-            this.db!.all('PRAGMA table_info(nonces)', (err, columns) => {
-              if (err) {
-                console.error('Error checking table structure:', err);
-              } else {
-                console.log(
-                  'Table columns:',
-                  (columns as any[]).map((col) => col.name)
-                );
-              }
-            });
-            resolve();
-          })
-          .catch(reject);
-      });
+      // Create own connection if needed
+      if (this.ownConnection && this.dbPath) {
+        this.db = new sqlite3.Database(this.dbPath, (err) => {
+          if (err) {
+            console.error('Error opening database:', err);
+            reject(new DatabaseError(`Failed to open database: ${err.message}`));
+            return;
+          }
+
+          this.createTables()
+            .then(() => {
+              console.log('Nonce database initialized successfully');
+              // Verify the table structure
+              this.db!.all('PRAGMA table_info(nonces)', (err, columns) => {
+                if (err) {
+                  console.error('Error checking table structure:', err);
+                } else {
+                  console.log(
+                    'Table columns:',
+                    (columns as any[]).map((col) => col.name)
+                  );
+                }
+              });
+              resolve();
+            })
+            .catch(reject);
+        });
+      } else {
+        reject(new DatabaseError('Invalid database configuration'));
+      }
     });
   }
 
@@ -112,7 +136,7 @@ export class NonceDatabase {
       `;
 
       const createTransactionsTable = `
-        CREATE TABLE IF NOT EXISTS transactions (
+        CREATE TABLE IF NOT EXISTS facilitator_transactions (
           id INTEGER PRIMARY KEY AUTOINCREMENT,
           nonce TEXT NOT NULL,
           transaction_signature TEXT UNIQUE,
@@ -135,10 +159,10 @@ export class NonceDatabase {
 
         this.db!.run(createTransactionsTable, (err) => {
           if (err) {
-            reject(new DatabaseError(`Failed to create transactions table: ${err.message}`));
+            reject(new DatabaseError(`Failed to create facilitator_transactions table: ${err.message}`));
             return;
           }
-          console.log('Created transactions table');
+          console.log('Created facilitator_transactions table');
           resolve();
         });
       });
@@ -369,7 +393,7 @@ export class NonceDatabase {
   async storeTransaction(transactionData: TransactionData): Promise<number> {
     return new Promise((resolve, reject) => {
       const sql = `
-        INSERT INTO transactions (
+        INSERT INTO facilitator_transactions (
           nonce, transaction_signature, status, error_message
         ) VALUES (?, ?, ?, ?)
       `;
@@ -403,7 +427,7 @@ export class NonceDatabase {
   ): Promise<number> {
     return new Promise((resolve, reject) => {
       const sql = `
-        UPDATE transactions 
+        UPDATE facilitator_transactions
         SET status = ?, error_message = ?, updated_at = CURRENT_TIMESTAMP
         WHERE transaction_signature = ?
       `;
@@ -419,20 +443,23 @@ export class NonceDatabase {
   }
 
   /**
-   * Close the database connection
+   * Close the database connection (only if we own it)
    */
   async close(): Promise<void> {
     return new Promise((resolve, reject) => {
-      if (this.db) {
+      // Only close if we own the connection
+      if (this.db && this.ownConnection) {
         this.db.close((err) => {
           if (err) {
             reject(new DatabaseError(`Failed to close database: ${err.message}`));
           } else {
-            console.log('Database connection closed');
+            console.log('Nonce database connection closed');
             resolve();
           }
         });
       } else {
+        // Using shared connection, don't close it
+        console.log('Nonce database using shared connection, not closing');
         resolve();
       }
     });
