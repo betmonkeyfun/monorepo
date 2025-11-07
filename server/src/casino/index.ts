@@ -172,8 +172,8 @@ async function setupRoutes() {
       // Create bet DTO
       req.body.amount = BET_AMOUNTS.QUICK_BET;
 
-      // Get or create user
-      const walletAddress = req.payment?.recipient || 'anonymous';
+      // Get or create user (use client public key, not merchant address)
+      const walletAddress = req.payment?.clientPublicKey || 'anonymous';
       let user;
       try {
         user = await userService.getUserByWallet(walletAddress);
@@ -184,7 +184,7 @@ async function setupRoutes() {
         });
       }
 
-      // Play game
+      // Play game with deposit in one atomic transaction
       const betDto = {
         bets: [
           {
@@ -195,7 +195,19 @@ async function setupRoutes() {
         ],
       };
 
-      const game = await rouletteService.playRoulette(user.id, betDto);
+      // Convert payment amount from lamports to SOL
+      const paymentAmountSOL = req.payment?.amount
+        ? (BigInt(req.payment.amount) / BigInt(1e9)).toString() +
+          '.' +
+          (BigInt(req.payment.amount) % BigInt(1e9)).toString().padStart(9, '0')
+        : '0.001';
+
+      const game = await rouletteService.depositAndPlay(
+        user.id,
+        betDto,
+        paymentAmountSOL,
+        req.payment?.transactionSignature || 'internal'
+      );
       const won = parseFloat(game.profit) > 0;
 
       res.json({
@@ -234,8 +246,8 @@ async function setupRoutes() {
 
   app.post('/play/custom', customBetMiddleware.middleware, async (req: Request, res: Response) => {
     try {
-      // Get or create user
-      const walletAddress = req.payment?.recipient || 'anonymous';
+      // Get or create user (use client public key, not merchant address)
+      const walletAddress = req.payment?.clientPublicKey || 'anonymous';
       let user;
       try {
         user = await userService.getUserByWallet(walletAddress);
@@ -246,8 +258,20 @@ async function setupRoutes() {
         });
       }
 
-      // Play game with custom bets
-      const game = await rouletteService.playRoulette(user.id, req.body);
+      // Play game with deposit in one atomic transaction
+      // Convert payment amount from lamports to SOL
+      const paymentAmountSOL = req.payment?.amount
+        ? (BigInt(req.payment.amount) / BigInt(1e9)).toString() +
+          '.' +
+          (BigInt(req.payment.amount) % BigInt(1e9)).toString().padStart(9, '0')
+        : '0.01';
+
+      const game = await rouletteService.depositAndPlay(
+        user.id,
+        req.body,
+        paymentAmountSOL,
+        req.payment?.transactionSignature || 'internal'
+      );
       const won = parseFloat(game.profit) > 0;
 
       res.json({

@@ -88,11 +88,15 @@ FACILITATOR_KEYPAIR="./keys/facilitator-keypair.json"
 
 if [ -f "$FACILITATOR_KEYPAIR" ]; then
     print_info "Facilitator keypair already exists at $FACILITATOR_KEYPAIR"
-    read -p "Do you want to generate a new one? (y/N): " -n 1 -r
-    echo
-    if [[ $REPLY =~ ^[Yy]$ ]]; then
-        solana-keygen new --outfile "$FACILITATOR_KEYPAIR" --force --no-bip39-passphrase
-        print_success "New facilitator keypair generated"
+    if [ -t 0 ]; then
+        read -p "Do you want to generate a new one? (y/N): " -n 1 -r
+        echo
+        if [[ $REPLY =~ ^[Yy]$ ]]; then
+            solana-keygen new --outfile "$FACILITATOR_KEYPAIR" --force --no-bip39-passphrase
+            print_success "New facilitator keypair generated"
+        fi
+    else
+        print_info "Non-interactive mode: keeping existing keypair"
     fi
 else
     solana-keygen new --outfile "$FACILITATOR_KEYPAIR" --no-bip39-passphrase
@@ -110,7 +114,7 @@ const fs = require('fs');
 const bs58 = require('bs58');
 const keypair = JSON.parse(fs.readFileSync('$FACILITATOR_KEYPAIR', 'utf8'));
 const secretKey = Uint8Array.from(keypair);
-console.log(bs58.encode(secretKey));
+console.log(bs58.default.encode(secretKey));
 ")
 
 echo ""
@@ -129,13 +133,17 @@ echo "------------------------------"
 
 if [ -f ".env" ]; then
     print_info ".env file already exists"
-    read -p "Do you want to overwrite it? (y/N): " -n 1 -r
-    echo
-    if [[ ! $REPLY =~ ^[Yy]$ ]]; then
-        print_info "Keeping existing .env file"
+    if [ -t 0 ]; then
+        read -p "Do you want to overwrite it? (y/N): " -n 1 -r
+        echo
+        if [[ ! $REPLY =~ ^[Yy]$ ]]; then
+            print_info "Keeping existing .env file"
+        else
+            rm .env
+            CREATE_ENV=true
+        fi
     else
-        rm .env
-        CREATE_ENV=true
+        print_info "Non-interactive mode: keeping existing .env file"
     fi
 else
     CREATE_ENV=true

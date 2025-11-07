@@ -34,15 +34,15 @@ export class WalletService {
   }
 
   /**
-   * Process deposit transaction
+   * Internal method to credit wallet without transaction wrapper
+   * Use this when already inside a transaction
    */
-  async deposit(userId: string, dto: DepositDto): Promise<Transaction> {
+  async creditWalletInternal(userId: string, amount: string, transactionSignature: string): Promise<Transaction> {
     const wallet = await this.getWallet(userId);
-    const amount = dto.amount;
 
     // Validate amount
     if (parseFloat(amount) <= 0) {
-      throw new CasinoError('Deposit amount must be positive', 'INVALID_AMOUNT', 400);
+      throw new CasinoError('Amount must be positive', 'INVALID_AMOUNT', 400);
     }
 
     const balanceBefore = wallet.balance;
@@ -55,35 +55,46 @@ export class WalletService {
       amount,
       balanceBefore,
       balanceAfter,
-      transactionSignature: dto.transactionSignature,
+      transactionSignature,
       createdAt: Date.now(),
     };
 
-    await this.db.transaction(async () => {
-      // Update wallet balance
-      await this.db.run(
-        'UPDATE wallets SET balance = ?, updated_at = ? WHERE user_id = ?',
-        [balanceAfter, transaction.createdAt, userId]
-      );
+    // Update wallet balance (no transaction wrapper - caller handles it)
+    await this.db.run(
+      'UPDATE wallets SET balance = ?, updated_at = ? WHERE user_id = ?',
+      [balanceAfter, transaction.createdAt, userId]
+    );
 
-      // Record transaction
-      await this.db.run(
-        `INSERT INTO transactions (id, user_id, type, amount, balance_before, balance_after, transaction_signature, created_at)
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
-        [
-          transaction.id,
-          transaction.userId,
-          transaction.type,
-          transaction.amount,
-          transaction.balanceBefore,
-          transaction.balanceAfter,
-          transaction.transactionSignature,
-          transaction.createdAt,
-        ]
-      );
-    });
+    // Record transaction
+    await this.db.run(
+      `INSERT INTO transactions (id, user_id, type, amount, balance_before, balance_after, transaction_signature, created_at)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+      [
+        transaction.id,
+        transaction.userId,
+        transaction.type,
+        transaction.amount,
+        transaction.balanceBefore,
+        transaction.balanceAfter,
+        transaction.transactionSignature,
+        transaction.createdAt,
+      ]
+    );
 
     return transaction;
+  }
+
+  /**
+   * Process deposit transaction
+   */
+  async deposit(userId: string, dto: DepositDto): Promise<Transaction> {
+    let transaction: Transaction | null = null;
+
+    await this.db.transaction(async () => {
+      transaction = await this.creditWalletInternal(userId, dto.amount, dto.transactionSignature);
+    });
+
+    return transaction!;
   }
 
   /**
@@ -228,9 +239,10 @@ export class WalletService {
   }
 
   /**
-   * Add to balance (for winning bet)
+   * Internal method to add balance without transaction wrapper
+   * Use this when already inside a transaction
    */
-  async addBalance(userId: string, amount: string, metadata?: string): Promise<Transaction> {
+  async addBalanceInternal(userId: string, amount: string, metadata?: string): Promise<Transaction> {
     const wallet = await this.getWallet(userId);
     const balanceBefore = wallet.balance;
     const balanceAfter = this.addAmounts(balanceBefore, amount);
@@ -246,29 +258,40 @@ export class WalletService {
       createdAt: Date.now(),
     };
 
-    await this.db.transaction(async () => {
-      await this.db.run(
-        'UPDATE wallets SET balance = ?, updated_at = ? WHERE user_id = ?',
-        [balanceAfter, transaction.createdAt, userId]
-      );
+    await this.db.run(
+      'UPDATE wallets SET balance = ?, updated_at = ? WHERE user_id = ?',
+      [balanceAfter, transaction.createdAt, userId]
+    );
 
-      await this.db.run(
-        `INSERT INTO transactions (id, user_id, type, amount, balance_before, balance_after, metadata, created_at)
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
-        [
-          transaction.id,
-          transaction.userId,
-          transaction.type,
-          transaction.amount,
-          transaction.balanceBefore,
-          transaction.balanceAfter,
-          transaction.metadata,
-          transaction.createdAt,
-        ]
-      );
-    });
+    await this.db.run(
+      `INSERT INTO transactions (id, user_id, type, amount, balance_before, balance_after, metadata, created_at)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+      [
+        transaction.id,
+        transaction.userId,
+        transaction.type,
+        transaction.amount,
+        transaction.balanceBefore,
+        transaction.balanceAfter,
+        transaction.metadata,
+        transaction.createdAt,
+      ]
+    );
 
     return transaction;
+  }
+
+  /**
+   * Add to balance (for winning bet)
+   */
+  async addBalance(userId: string, amount: string, metadata?: string): Promise<Transaction> {
+    let transaction: Transaction | null = null;
+
+    await this.db.transaction(async () => {
+      transaction = await this.addBalanceInternal(userId, amount, metadata);
+    });
+
+    return transaction!;
   }
 
   /**

@@ -128,13 +128,22 @@ print_info "Current balance: $PLAYER_BALANCE SOL"
 
 if (( $(echo "$PLAYER_BALANCE < 0.1" | bc -l) )); then
     print_info "Balance is low, requesting airdrop..."
-    if solana airdrop 1 "$PLAYER_PUBKEY" --url $NETWORK; then
+    if solana airdrop 1 "$PLAYER_PUBKEY" --url $NETWORK 2>/dev/null; then
         print_success "Airdrop successful!"
         PLAYER_BALANCE=$(solana balance "$PLAYER_PUBKEY" 2>/dev/null | awk '{print $1}')
         print_info "New balance: $PLAYER_BALANCE SOL"
     else
-        print_error "Airdrop failed. Try manually: solana airdrop 1 $PLAYER_PUBKEY --url $NETWORK"
-        exit 1
+        print_error "Airdrop failed (rate limit reached)"
+        print_info "Try manually: solana airdrop 1 $PLAYER_PUBKEY --url $NETWORK"
+        print_info "Or transfer from another wallet"
+
+        # Check if we still have any balance
+        if (( $(echo "$PLAYER_BALANCE < 0.001" | bc -l) )); then
+            print_error "Insufficient balance to play. Need at least 0.001 SOL"
+            exit 1
+        else
+            print_info "Continuing with current balance: $PLAYER_BALANCE SOL"
+        fi
     fi
 else
     print_success "Balance is sufficient"
@@ -172,7 +181,7 @@ play_roulette() {
     echo ""
 
     # Use Node.js to make the x402 payment and play
-    node -e "
+    node --input-type=module -e "
     import fs from 'fs';
     import crypto from 'crypto';
     import nacl from 'tweetnacl';
@@ -212,13 +221,13 @@ play_roulette() {
                 expiry: expiry,
             };
 
-            // 3. Create structured data for signature
+            // 3. Create structured data for signature (must match server-side exactly)
             const structuredData = {
                 domain: {
-                    name: 'betmonkey-casino',
+                    name: 'x402-solana-protocol',
                     version: '1',
-                    chainId: '$NETWORK',
-                    verifyingContract: 'casino-roulette',
+                    chainId: 'devnet',
+                    verifyingContract: 'x402-sol',
                 },
                 types: {
                     AuthorizationPayload: [

@@ -9,10 +9,7 @@ import { UserService } from '../services/user.service.js';
 import { PlaceBetDto, PlaceBetSchema, BetType } from '../types/index.js';
 import { BET_CONFIGS } from '../config/roulette.config.js';
 
-export function createRouletteRoutes(
-  rouletteService: RouletteService,
-  userService: UserService
-): Router {
+export function createRouletteRoutes(rouletteService: RouletteService, userService: UserService): Router {
   const router = Router();
 
   /**

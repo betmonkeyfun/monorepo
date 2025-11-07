@@ -29,6 +29,145 @@ export class RouletteService {
   ) {}
 
   /**
+   * Deposit funds and play roulette in one atomic transaction
+   */
+  async depositAndPlay(
+    userId: string,
+    dto: PlaceBetDto,
+    depositAmount: string,
+    transactionSignature: string
+  ): Promise<Game> {
+    // Validate all bets
+    this.validateBets(dto);
+
+    // Calculate total bet amount
+    const totalBetAmount = this.calculateTotalBetAmount(dto);
+
+    // Spin the roulette
+    const result = spinRoulette();
+
+    // Create game record
+    const game: Game = {
+      id: randomUUID(),
+      userId,
+      result,
+      totalBetAmount,
+      totalWinAmount: '0',
+      profit: '0',
+      status: 'pending',
+      createdAt: Date.now(),
+    };
+
+    // Process all bets and calculate winnings
+    const bets: Bet[] = [];
+    let totalWinAmount = 0;
+
+    await this.db.transaction(async () => {
+      // First, credit the deposit to the wallet
+      await this.walletService.creditWalletInternal(userId, depositAmount, transactionSignature);
+
+      // Now check if user has sufficient funds (after deposit)
+      const wallet = await this.walletService.getWallet(userId);
+      const availableBalance = this.subtractAmounts(wallet.balance, wallet.lockedBalance);
+
+      if (this.compareAmounts(availableBalance, totalBetAmount) < 0) {
+        throw new InsufficientFundsError(totalBetAmount, availableBalance);
+      }
+
+      // Lock funds
+      await this.walletService.lockFunds(userId, totalBetAmount);
+
+      // Insert game
+      await this.db.run(
+        `INSERT INTO games (id, user_id, result, total_bet_amount, total_win_amount, profit, status, created_at)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+        [
+          game.id,
+          game.userId,
+          game.result,
+          game.totalBetAmount,
+          game.totalWinAmount,
+          game.profit,
+          game.status,
+          game.createdAt,
+        ]
+      );
+
+      // Process each bet
+      for (const betDto of dto.bets) {
+        const isWin = checkWin(betDto.numbers, result);
+        const config = BET_CONFIGS[betDto.type];
+        const winAmount = isWin ? calculateWinAmount(betDto.amount, config.payout) : '0';
+
+        if (isWin) {
+          totalWinAmount += parseFloat(winAmount);
+        }
+
+        const bet: Bet = {
+          id: randomUUID(),
+          gameId: game.id,
+          userId,
+          type: betDto.type,
+          numbers: betDto.numbers,
+          amount: betDto.amount,
+          payout: config.payout,
+          result: isWin ? 'win' : 'loss',
+          winAmount,
+          createdAt: game.createdAt,
+        };
+
+        bets.push(bet);
+
+        // Insert bet
+        await this.db.run(
+          `INSERT INTO bets (id, game_id, user_id, type, numbers, amount, payout, result, win_amount, created_at)
+           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+          [
+            bet.id,
+            bet.gameId,
+            bet.userId,
+            bet.type,
+            JSON.stringify(bet.numbers),
+            bet.amount,
+            bet.payout,
+            bet.result,
+            bet.winAmount,
+            bet.createdAt,
+          ]
+        );
+      }
+
+      // Calculate profit (positive = user won, negative = user lost)
+      const totalWinAmountStr = totalWinAmount.toFixed(9);
+      const profit = this.subtractAmounts(totalWinAmountStr, totalBetAmount);
+
+      // Update game with final results
+      await this.db.run(
+        `UPDATE games
+         SET total_win_amount = ?, profit = ?, status = ?, completed_at = ?
+         WHERE id = ?`,
+        [totalWinAmountStr, profit, 'completed', game.createdAt, game.id]
+      );
+
+      // Settle finances
+      await this.walletService.unlockFunds(userId, totalBetAmount);
+
+      // If user won, credit the winnings
+      if (totalWinAmount > 0) {
+        // User won - credit just the win amount (not the bet, that's already in the wallet)
+        await this.walletService.addBalanceInternal(userId, totalWinAmountStr, `Game ${game.id} winnings`);
+      }
+
+      // Update game object for return
+      game.totalWinAmount = totalWinAmountStr;
+      game.profit = profit;
+      game.status = 'completed';
+    });
+
+    return game;
+  }
+
+  /**
    * Place bets and play roulette game
    */
   async playRoulette(userId: string, dto: PlaceBetDto): Promise<Game> {

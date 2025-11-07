@@ -13,9 +13,11 @@
     }
   },
   "scripts": {
+    "setup": "bash setup-casino.sh",
     "build": "tsc",
     "ci": "npm run build && npm run lint && npm run format:check",
     "clean": "rm -rf dist",
+    "dev": "npm run dev:facilitator & npm run dev:server & npm run dev:casino & wait",
     "dev:facilitator": "tsx watch src/facilitator/index.ts",
     "dev:server": "tsx watch src/server/index.ts",
     "dev:casino": "tsx watch src/casino/index.ts",
@@ -36,6 +38,13 @@
     "test:402": "node test-402-response.mjs",
     "test:replay": "node test-replay-attack.mjs",
     "generate:client": "node generate-test-client.mjs",
+    "play": "node play-game.mjs",
+    "play:red": "node play-game.mjs red 1",
+    "play:black": "node play-game.mjs black 1",
+    "play:auto": "node play-game.mjs red 5",
+    "play:number": "node play-number.mjs",
+    "play:zero": "node play-number.mjs 0 1",
+    "play:green": "node play-number.mjs 0 1",
     "lint": "eslint src --ext .ts",
     "fmt": "prettier --write src",
     "fmt:check": "prettier --check src"
