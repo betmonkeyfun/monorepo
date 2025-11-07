@@ -152,9 +152,35 @@ export class RouletteService {
       // Settle finances
       await this.walletService.unlockFunds(userId, totalBetAmount);
 
+      // Deduct the bet amount from balance (user always loses their bet)
+      const walletAfter = await this.walletService.getWallet(userId);
+      const balanceBeforeBet = walletAfter.balance;
+      const balanceAfterBet = this.subtractAmounts(balanceBeforeBet, totalBetAmount);
+
+      await this.db.run(
+        'UPDATE wallets SET balance = ?, updated_at = ? WHERE user_id = ?',
+        [balanceAfterBet, Date.now(), userId]
+      );
+
+      // Record the bet deduction as a transaction
+      await this.db.run(
+        `INSERT INTO transactions (id, user_id, type, amount, balance_before, balance_after, metadata, created_at)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+        [
+          randomUUID(),
+          userId,
+          'loss',
+          totalBetAmount,
+          balanceBeforeBet,
+          balanceAfterBet,
+          JSON.stringify({ gameId: game.id, type: 'roulette_bet', transactionSignature }),
+          Date.now(),
+        ]
+      );
+
       // If user won, credit the winnings
       if (totalWinAmount > 0) {
-        // User won - credit just the win amount (not the bet, that's already in the wallet)
+        // User won - credit the win amount (they already lost their bet above)
         await this.walletService.addBalanceInternal(userId, totalWinAmountStr, `Game ${game.id} winnings`);
       }
 

@@ -6,8 +6,10 @@ import { PublicKey } from '@solana/web3.js';
 import dynamic from 'next/dynamic';
 import { modal } from '@/contexts/WalletContext';
 import { getPlayerStats, getWalletBalance, createPaymentRequest, withdrawBalance, placeBetWithBalance, placeCustomBetWithBalance } from '@/lib/x402';
-import BettingInterface from '@/components/roulette/BettingInterface';
+import NumberPicker from '@/components/roulette/NumberPicker';
+import QuickBets from '@/components/roulette/QuickBets';
 import CoinAnimation, { WinningAnimation, LosingAnimation } from '@/components/roulette/CoinAnimation';
+import WithdrawModal from '@/components/casino/WithdrawModal';
 
 // Use simple 2D roulette (more stable than 3D)
 const RouletteWheel = dynamic(() => import('@/components/roulette/SimpleRouletteWheel'), {
@@ -29,6 +31,8 @@ export default function Home() {
   const [stats, setStats] = useState<any>(null);
   const [gameResult, setGameResult] = useState<any>(null);
   const [showAnimation, setShowAnimation] = useState(false);
+  const [showWithdrawModal, setShowWithdrawModal] = useState(false);
+  const [useBalance, setUseBalance] = useState(false);
 
   // Load player data
   useEffect(() => {
@@ -264,25 +268,19 @@ export default function Home() {
     setGameResult(null);
   };
 
-  const handleWithdraw = async () => {
+  const handleWithdraw = () => {
+    if (!address) return;
+    setShowWithdrawModal(true);
+  };
+
+  const handleWithdrawSubmit = async (amount: string) => {
     if (!address) return;
 
-    const withdrawAmount = prompt('¿Cuánto SOL deseas retirar? (Disponible: ' + balance + ' SOL)');
-    if (!withdrawAmount || parseFloat(withdrawAmount) <= 0) {
-      return;
-    }
-
-    if (parseFloat(withdrawAmount) > parseFloat(balance)) {
-      alert('No tienes suficiente balance para retirar esa cantidad');
-      return;
-    }
-
     try {
-      await withdrawBalance(address, withdrawAmount);
-      alert(`¡Retiro exitoso! ${withdrawAmount} SOL han sido enviados a tu wallet`);
+      await withdrawBalance(address, amount);
       await loadPlayerData();
     } catch (error: any) {
-      alert(`Error al retirar: ${error.message}`);
+      throw error; // Modal will handle error display
     }
   };
 
@@ -292,7 +290,6 @@ export default function Home() {
       <header className="border-b border-gray-800 bg-gray-900/50 backdrop-blur-sm">
         <div className="container mx-auto px-4 py-4 flex items-center justify-between">
           <div className="flex items-center space-x-3">
-            <div className="text-4xl">🎰</div>
             <div>
               <h1 className="text-2xl font-bold bg-gradient-to-r from-yellow-400 to-yellow-200 bg-clip-text text-transparent">
                 BetMonkey Casino
@@ -302,17 +299,48 @@ export default function Home() {
           </div>
 
           <div className="flex items-center space-x-4">
-            {stats && (
-              <div className="hidden md:flex items-center space-x-4 text-sm">
-                <div className="text-green-400">
-                  Wins: {stats.totalWins || 0}
+            {isConnected && (
+              <div className="hidden md:flex items-center space-x-4">
+                {stats && (
+                  <div className="flex items-center space-x-4 text-sm">
+                    <div className="text-green-400">
+                      Wins: {stats.totalWins || 0}
+                    </div>
+                    <div className="text-red-400">
+                      Losses: {stats.totalLosses || 0}
+                    </div>
+                  </div>
+                )}
+
+                {/* Payment Source Selector */}
+                <div>
+                  <select
+                    value={useBalance ? 'balance' : 'wallet'}
+                    onChange={(e) => setUseBalance(e.target.value === 'balance')}
+                    disabled={parseFloat(balance) <= 0 && useBalance}
+                    className="bg-gray-800 border border-yellow-500/50 rounded-lg px-3 py-2 text-white text-sm font-bold cursor-pointer focus:border-yellow-500 focus:outline-none transition-all appearance-none"
+                    style={{
+                      backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 24 24' stroke='%23EAB308'%3E%3Cpath stroke-linecap='round' stroke-linejoin='round' stroke-width='2' d='M19 9l-7 7-7-7'%3E%3C/path%3E%3C/svg%3E")`,
+                      backgroundRepeat: 'no-repeat',
+                      backgroundPosition: 'right 0.5rem center',
+                      backgroundSize: '1.2em 1.2em',
+                      paddingRight: '2.5rem',
+                    }}
+                  >
+                    <option value="wallet" className="bg-gray-900">New Transaction</option>
+                    <option value="balance" className="bg-gray-900" disabled={parseFloat(balance) <= 0}>
+                      Casino Balance {parseFloat(balance) <= 0 ? '(Empty)' : ''}
+                    </option>
+                  </select>
                 </div>
-                <div className="text-red-400">
-                  Losses: {stats.totalLosses || 0}
-                </div>
-                <div className="text-yellow-400">
-                  Total Wagered: {stats.totalWagered || '0'} SOL
-                </div>
+
+                <button
+                  onClick={() => setShowWithdrawModal(true)}
+                  className="bg-gradient-to-r from-yellow-600/20 to-yellow-500/20 border-2 border-yellow-500/50 rounded-xl px-4 py-2 hover:from-yellow-600/30 hover:to-yellow-500/30 hover:border-yellow-500/70 transition-all cursor-pointer"
+                >
+                  <div className="text-xs text-yellow-300 mb-0.5">Casino Balance</div>
+                  <div className="text-lg font-bold text-yellow-400">{balance} SOL</div>
+                </button>
               </div>
             )}
 
@@ -322,14 +350,12 @@ export default function Home() {
       </header>
 
       {/* Main Content */}
-      <div className="container mx-auto px-4 py-8 space-y-8">
+      <div className="container mx-auto px-4 py-3 space-y-3">
         {!isConnected ? (
           <div className="text-center py-20">
-            <div className="text-6xl mb-6">🎲</div>
             <h2 className="text-3xl font-bold mb-4">Welcome to BetMonkey Casino</h2>
             <p className="text-gray-400 mb-8 max-w-2xl mx-auto">
               Connect your Solana wallet to start playing decentralized roulette.
-              All bets are secured by blockchain and the x402 payment protocol.
             </p>
             <button
               onClick={() => modal.open()}
@@ -340,48 +366,40 @@ export default function Home() {
           </div>
         ) : (
           <>
-            {/* Roulette Wheel */}
+            {/* Quick Bets - Above everything */}
+            <QuickBets
+              onPlaceBet={handlePlaceBet}
+              isSpinning={isSpinning}
+              useBalance={useBalance}
+            />
+
+            {/* Roulette Wheel - Compact */}
             <div className="flex justify-center">
-              <div className="w-full max-w-4xl">
+              <div className="w-full max-w-3xl">
                 <RouletteWheel
                   isSpinning={isSpinning}
                   winningNumber={winningNumber}
                   onSpinComplete={handleSpinComplete}
                 />
 
-                {/* Winning Number Display */}
+                {/* Winning Number Display - Compact */}
                 {winningNumber !== null && !isSpinning && (
-                  <div className="mt-6 text-center">
-                    <div className="inline-block bg-gradient-to-r from-yellow-600 to-yellow-500 rounded-xl px-8 py-4 shadow-2xl">
-                      <div className="text-sm text-yellow-100 font-medium">Winning Number</div>
-                      <div className="text-5xl font-bold text-white mt-1">{winningNumber}</div>
+                  <div className="mt-3 text-center">
+                    <div className="inline-block bg-gradient-to-r from-yellow-600 to-yellow-500 rounded-lg px-6 py-2 shadow-xl">
+                      <div className="text-xs text-yellow-100 font-medium">Winning Number</div>
+                      <div className="text-3xl font-bold text-white">{winningNumber}</div>
                     </div>
                   </div>
                 )}
               </div>
             </div>
 
-            {/* Betting Interface */}
-            <BettingInterface
-              onPlaceBet={handlePlaceBet}
-              onPlaceMultiNumberBet={handlePlaceMultiNumberBet}
+            {/* Number Picker - Compact */}
+            <NumberPicker
+              onPlaceBet={handlePlaceMultiNumberBet}
               isSpinning={isSpinning}
-              balance={balance}
-              onWithdraw={handleWithdraw}
+              useBalance={useBalance}
             />
-
-            {/* How to Play */}
-            <div className="bg-gray-800/30 backdrop-blur-sm rounded-xl p-6 border border-gray-700 max-w-4xl mx-auto">
-              <h3 className="text-xl font-bold mb-4">🎮 How to Play</h3>
-              <ul className="space-y-2 text-gray-300">
-                <li>• Choose your bet type: simple bets (red/black), special green (0), or specific numbers</li>
-                <li>• Simple bets cost 0.001 SOL and pay 1:1 on win</li>
-                <li>• Number bets (including green/0) cost 0.01 SOL and pay 35:1 on win</li>
-                <li>• Your wallet will sign a transaction to place the bet using the x402 protocol</li>
-                <li>• Watch the wheel spin and see if you win!</li>
-                <li>• All winnings are automatically credited to your casino balance</li>
-              </ul>
-            </div>
           </>
         )}
       </div>
@@ -408,14 +426,14 @@ export default function Home() {
         </>
       )}
 
-      {/* Footer */}
-      <footer className="border-t border-gray-800 bg-gray-900/50 backdrop-blur-sm mt-20">
-        <div className="container mx-auto px-4 py-6 text-center text-gray-400 text-sm">
-          <p>
-            Built with ❤️ on Solana • Powered by x402 Protocol • BetMonkey Casino
-          </p>
-        </div>
-      </footer>
+
+      {/* Withdraw Modal */}
+      <WithdrawModal
+        isOpen={showWithdrawModal}
+        onClose={() => setShowWithdrawModal(false)}
+        onWithdraw={handleWithdrawSubmit}
+        balance={balance}
+      />
     </main>
   );
 }

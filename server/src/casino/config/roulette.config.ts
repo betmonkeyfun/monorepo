@@ -40,7 +40,7 @@ export interface BetTypeConfig {
 export const BET_CONFIGS: Record<BetType, BetTypeConfig> = {
   [BetType.STRAIGHT]: {
     type: BetType.STRAIGHT,
-    payout: 35,
+    payout: 30, // Reducido de 35 a 30 (house edge ~18%)
     probability: 0.027,
     description: 'Apuesta a un número específico',
     minNumbers: 1,
@@ -50,7 +50,7 @@ export const BET_CONFIGS: Record<BetType, BetTypeConfig> = {
 
   [BetType.SPLIT]: {
     type: BetType.SPLIT,
-    payout: 17,
+    payout: 15, // Reducido de 17 a 15 (house edge ~18%)
     probability: 0.0541,
     description: 'Apuesta a dos números adyacentes',
     minNumbers: 2,
@@ -65,7 +65,7 @@ export const BET_CONFIGS: Record<BetType, BetTypeConfig> = {
 
   [BetType.STREET]: {
     type: BetType.STREET,
-    payout: 11,
+    payout: 9, // Reducido de 11 a 9 (house edge ~18%)
     probability: 0.0811,
     description: 'Apuesta a tres números en línea horizontal',
     minNumbers: 3,
@@ -80,7 +80,7 @@ export const BET_CONFIGS: Record<BetType, BetTypeConfig> = {
 
   [BetType.CORNER]: {
     type: BetType.CORNER,
-    payout: 8,
+    payout: 7, // Reducido de 8 a 7 (house edge ~14%)
     probability: 0.1081,
     description: 'Apuesta a cuatro números que forman un cuadro',
     minNumbers: 4,
@@ -99,7 +99,7 @@ export const BET_CONFIGS: Record<BetType, BetTypeConfig> = {
 
   [BetType.LINE]: {
     type: BetType.LINE,
-    payout: 5,
+    payout: 4, // Reducido de 5 a 4 (house edge ~18%)
     probability: 0.1622,
     description: 'Apuesta a seis números (dos calles adyacentes)',
     minNumbers: 6,
@@ -114,7 +114,7 @@ export const BET_CONFIGS: Record<BetType, BetTypeConfig> = {
 
   [BetType.DOZEN]: {
     type: BetType.DOZEN,
-    payout: 2,
+    payout: 2, // Mantenido igual (house edge ya es ~8%)
     probability: 0.3243,
     description: 'Apuesta a una docena (1-12, 13-24, 25-36)',
     minNumbers: 12,
@@ -133,7 +133,7 @@ export const BET_CONFIGS: Record<BetType, BetTypeConfig> = {
 
   [BetType.COLUMN]: {
     type: BetType.COLUMN,
-    payout: 2,
+    payout: 2, // Mantenido igual (house edge ya es ~8%)
     probability: 0.3243,
     description: 'Apuesta a una columna (12 números)',
     minNumbers: 12,
@@ -152,7 +152,7 @@ export const BET_CONFIGS: Record<BetType, BetTypeConfig> = {
 
   [BetType.RED]: {
     type: BetType.RED,
-    payout: 1,
+    payout: 0.9, // Reducido de 1 a 0.9 (house edge ~13%)
     probability: 0.4864,
     description: 'Apuesta a todos los números rojos',
     minNumbers: 18,
@@ -165,7 +165,7 @@ export const BET_CONFIGS: Record<BetType, BetTypeConfig> = {
 
   [BetType.BLACK]: {
     type: BetType.BLACK,
-    payout: 1,
+    payout: 0.9, // Reducido de 1 a 0.9 (house edge ~13%)
     probability: 0.4864,
     description: 'Apuesta a todos los números negros',
     minNumbers: 18,
@@ -178,7 +178,7 @@ export const BET_CONFIGS: Record<BetType, BetTypeConfig> = {
 
   [BetType.EVEN]: {
     type: BetType.EVEN,
-    payout: 1,
+    payout: 0.9, // Reducido de 1 a 0.9 (house edge ~13%)
     probability: 0.4864,
     description: 'Apuesta a todos los números pares',
     minNumbers: 18,
@@ -191,7 +191,7 @@ export const BET_CONFIGS: Record<BetType, BetTypeConfig> = {
 
   [BetType.ODD]: {
     type: BetType.ODD,
-    payout: 1,
+    payout: 0.9, // Reducido de 1 a 0.9 (house edge ~13%)
     probability: 0.4864,
     description: 'Apuesta a todos los números impares',
     minNumbers: 18,
@@ -204,7 +204,7 @@ export const BET_CONFIGS: Record<BetType, BetTypeConfig> = {
 
   [BetType.LOW]: {
     type: BetType.LOW,
-    payout: 1,
+    payout: 0.9, // Reducido de 1 a 0.9 (house edge ~13%)
     probability: 0.4864,
     description: 'Apuesta a números bajos (1-18)',
     minNumbers: 18,
@@ -217,7 +217,7 @@ export const BET_CONFIGS: Record<BetType, BetTypeConfig> = {
 
   [BetType.HIGH]: {
     type: BetType.HIGH,
-    payout: 1,
+    payout: 0.9, // Reducido de 1 a 0.9 (house edge ~13%)
     probability: 0.4864,
     description: 'Apuesta a números altos (19-36)',
     minNumbers: 18,
