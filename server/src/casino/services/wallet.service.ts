@@ -118,8 +118,15 @@ export class WalletService {
     const balanceBefore = wallet.balance;
     const balanceAfter = this.subtractAmounts(balanceBefore, amount);
 
-    // TODO: In production, integrate with Solana to actually send the transaction
-    const mockTxSignature = `withdraw_${randomUUID()}`;
+    // Send actual Solana transaction
+    let txSignature: string;
+    try {
+      txSignature = await this.sendSolanaWithdrawal(dto.destinationAddress, amount);
+      console.log(`Withdrawal transaction sent: ${txSignature}`);
+    } catch (error) {
+      console.error('Failed to send Solana withdrawal:', error);
+      throw new CasinoError('Failed to send withdrawal transaction', 'WITHDRAWAL_FAILED', 500);
+    }
 
     const transaction: Transaction = {
       id: randomUUID(),
@@ -128,7 +135,7 @@ export class WalletService {
       amount,
       balanceBefore,
       balanceAfter,
-      transactionSignature: mockTxSignature,
+      transactionSignature: txSignature,
       metadata: JSON.stringify({ destinationAddress: dto.destinationAddress }),
       createdAt: Date.now(),
     };
@@ -159,6 +166,53 @@ export class WalletService {
     });
 
     return transaction;
+  }
+
+  /**
+   * Send Solana withdrawal transaction
+   */
+  private async sendSolanaWithdrawal(destinationAddress: string, amountSOL: string): Promise<string> {
+    const { Connection, PublicKey, Keypair, SystemProgram, Transaction, sendAndConfirmTransaction } = await import('@solana/web3.js');
+
+    // Get facilitator private key from environment
+    const facilitatorPrivateKey = process.env.FACILITATOR_PRIVATE_KEY;
+    if (!facilitatorPrivateKey) {
+      throw new Error('FACILITATOR_PRIVATE_KEY not configured');
+    }
+
+    // Parse the private key (base58 encoded)
+    const bs58 = await import('bs58');
+    const secretKey = bs58.default.decode(facilitatorPrivateKey);
+    const merchantKeypair = Keypair.fromSecretKey(secretKey);
+
+    // Connect to Solana
+    const rpcUrl = process.env.SOLANA_RPC_URL || 'https://api.devnet.solana.com';
+    const connection = new Connection(rpcUrl, 'confirmed');
+
+    // Convert SOL to lamports
+    const lamports = BigInt(Math.floor(parseFloat(amountSOL) * 1e9));
+
+    // Create transaction
+    const transaction = new Transaction().add(
+      SystemProgram.transfer({
+        fromPubkey: merchantKeypair.publicKey,
+        toPubkey: new PublicKey(destinationAddress),
+        lamports,
+      })
+    );
+
+    // Send and confirm transaction
+    const signature = await sendAndConfirmTransaction(
+      connection,
+      transaction,
+      [merchantKeypair],
+      {
+        commitment: 'confirmed',
+        maxRetries: 3,
+      }
+    );
+
+    return signature;
   }
 
   /**
