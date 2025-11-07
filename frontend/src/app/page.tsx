@@ -115,6 +115,24 @@ export default function Home() {
         '/play/quick'
       );
 
+      // Get numbers for the bet type
+      const getBetNumbers = (type: string): number[] => {
+        const RED_NUMBERS = [1, 3, 5, 7, 9, 12, 14, 16, 18, 19, 21, 23, 25, 27, 30, 32, 34, 36];
+        const BLACK_NUMBERS = [2, 4, 6, 8, 10, 11, 13, 15, 17, 20, 22, 24, 26, 28, 29, 31, 33, 35];
+
+        switch (type) {
+          case 'red': return RED_NUMBERS;
+          case 'black': return BLACK_NUMBERS;
+          case 'even': return Array.from({ length: 18 }, (_, i) => (i + 1) * 2);
+          case 'odd': return Array.from({ length: 18 }, (_, i) => i * 2 + 1);
+          case 'low': return Array.from({ length: 18 }, (_, i) => i + 1);
+          case 'high': return Array.from({ length: 18 }, (_, i) => i + 19);
+          default: return [];
+        }
+      };
+
+      const numbers = getBetNumbers(betType);
+
       // Send request with payment in X-PAYMENT header
       const CASINO_API_URL = process.env.NEXT_PUBLIC_CASINO_API_URL || 'http://localhost:3003';
       const response = await fetch(`${CASINO_API_URL}/play/quick`, {
@@ -125,6 +143,7 @@ export default function Home() {
         },
         body: JSON.stringify({
           type: betType,
+          numbers, // Include numbers for validation
         }),
       });
 

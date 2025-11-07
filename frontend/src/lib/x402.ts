@@ -2,6 +2,29 @@ import { PublicKey } from '@solana/web3.js';
 import bs58 from 'bs58';
 import { CASINO_API_URL } from './solana';
 
+// Helper to get numbers for bet type
+function getBetNumbers(betType: string): number[] {
+  const RED_NUMBERS = [1, 3, 5, 7, 9, 12, 14, 16, 18, 19, 21, 23, 25, 27, 30, 32, 34, 36];
+  const BLACK_NUMBERS = [2, 4, 6, 8, 10, 11, 13, 15, 17, 20, 22, 24, 26, 28, 29, 31, 33, 35];
+
+  switch (betType) {
+    case 'red':
+      return RED_NUMBERS;
+    case 'black':
+      return BLACK_NUMBERS;
+    case 'even':
+      return Array.from({ length: 18 }, (_, i) => (i + 1) * 2); // 2, 4, 6, ..., 36
+    case 'odd':
+      return Array.from({ length: 18 }, (_, i) => i * 2 + 1); // 1, 3, 5, ..., 35
+    case 'low':
+      return Array.from({ length: 18 }, (_, i) => i + 1); // 1-18
+    case 'high':
+      return Array.from({ length: 18 }, (_, i) => i + 19); // 19-36
+    default:
+      return [];
+  }
+}
+
 export interface PaymentPayload {
   amount: string;
   recipient: string;
@@ -261,6 +284,8 @@ export async function placeBetWithBalance(
   walletAddress: string,
   betType: string
 ): Promise<any> {
+  const numbers = getBetNumbers(betType);
+
   const response = await fetch(`${CASINO_API_URL}/roulette/quick-bet-with-balance`, {
     method: 'POST',
     headers: {
@@ -269,6 +294,7 @@ export async function placeBetWithBalance(
     body: JSON.stringify({
       walletAddress,
       type: betType,
+      numbers, // Include numbers for the bet type
     }),
   });
 
