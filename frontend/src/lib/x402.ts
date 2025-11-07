@@ -202,7 +202,7 @@ export async function placeCustomBet(
 
 // Get player stats
 export async function getPlayerStats(walletAddress: string): Promise<any> {
-  const response = await fetch(`${CASINO_API_URL}/api/roulette/stats/${walletAddress}`);
+  const response = await fetch(`${CASINO_API_URL}/roulette/stats/${walletAddress}`);
 
   if (!response.ok) {
     return null; // Return null if user doesn't exist yet

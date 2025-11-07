@@ -283,16 +283,34 @@ export class RouletteService {
       // Unlock funds
       await this.walletService.unlockFunds(userId, totalBetAmount);
 
-      // Deduct bet amount from balance
-      await this.walletService.deductBalance(
-        userId,
-        totalBetAmount,
-        JSON.stringify({ gameId: game.id, type: 'roulette_bet' })
+      // Deduct bet amount from balance (use internal method to avoid nested transaction)
+      const wallet = await this.walletService.getWallet(userId);
+      const balanceBefore = wallet.balance;
+      const balanceAfter = this.subtractAmounts(balanceBefore, totalBetAmount);
+
+      await this.db.run(
+        'UPDATE wallets SET balance = ?, updated_at = ? WHERE user_id = ?',
+        [balanceAfter, Date.now(), userId]
       );
 
-      // Add winnings to balance if any
+      await this.db.run(
+        `INSERT INTO transactions (id, user_id, type, amount, balance_before, balance_after, metadata, created_at)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+        [
+          randomUUID(),
+          userId,
+          'loss',
+          totalBetAmount,
+          balanceBefore,
+          balanceAfter,
+          JSON.stringify({ gameId: game.id, type: 'roulette_bet' }),
+          Date.now(),
+        ]
+      );
+
+      // Add winnings to balance if any (use internal method to avoid nested transaction)
       if (totalWinAmount > 0) {
-        await this.walletService.addBalance(
+        await this.walletService.addBalanceInternal(
           userId,
           totalWinAmountStr,
           JSON.stringify({ gameId: game.id, type: 'roulette_win', result })
