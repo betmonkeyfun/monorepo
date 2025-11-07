@@ -5,7 +5,7 @@
   "description": "BetMonkey - Decentralized betting platform on Solana with x402 payment protocol",
   "workspaces": [
     "server",
-    "web"
+    "frontend"
   ],
   "scripts": {
     "build": "npm run build --workspaces --if-present",
@@ -16,9 +16,9 @@
     "fmt:check": "npm run fmt:check --workspaces --if-present",
     "test": "npm run test --workspaces --if-present",
     "dev:server": "npm run dev --workspace=server",
-    "dev:web": "npm run dev --workspace=web",
+    "dev:frontend": "npm run dev --workspace=frontend",
     "build:server": "npm run build --workspace=server",
-    "build:web": "npm run build --workspace=web"
+    "build:frontend": "npm run build --workspace=frontend"
   },
   "keywords": [
     "solana",
