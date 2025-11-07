@@ -149,8 +149,8 @@ export default function Home() {
     }
   };
 
-  const handlePlaceMultiNumberBet = async (numbers: number[], amount: string) => {
-    if (!address || !isConnected || !walletProvider) {
+  const handlePlaceMultiNumberBet = async (numbers: number[], amount: string, useBalance: boolean) => {
+    if (!address || !isConnected) {
       modal.open();
       return;
     }
@@ -160,6 +160,36 @@ export default function Home() {
     setGameResult(null);
 
     try {
+      // Create bets array - one bet per number
+      const bets = numbers.map(number => ({
+        type: 'straight',
+        numbers: [number],
+        amount: amount,
+      }));
+
+      // If using casino balance, use the balance-based endpoint (no signature required)
+      if (useBalance) {
+        const result = await placeCustomBetWithBalance(address, bets);
+
+        setWinningNumber(result.data.result);
+        setGameResult({
+          game: {
+            winningNumber: result.data.result,
+            totalWinAmount: result.data.totalWin,
+          },
+        });
+
+        // Refresh balance
+        await loadPlayerData();
+        return;
+      }
+
+      // Otherwise, create new payment transaction
+      if (!walletProvider) {
+        modal.open();
+        return;
+      }
+
       // Calculate total cost (each number costs the amount)
       const totalCost = numbers.length * parseFloat(amount);
       const amountLamports = (totalCost * 1e9).toString();
@@ -184,13 +214,6 @@ export default function Home() {
         amountLamports,
         '/play/custom'
       );
-
-      // Create bets array - one bet per number
-      const bets = numbers.map(number => ({
-        type: 'straight',
-        numbers: [number],
-        amount: amount,
-      }));
 
       // Send request with payment in X-PAYMENT header
       const CASINO_API_URL = process.env.NEXT_PUBLIC_CASINO_API_URL || 'http://localhost:3003';
@@ -239,6 +262,28 @@ export default function Home() {
     setShowAnimation(false);
     setWinningNumber(null);
     setGameResult(null);
+  };
+
+  const handleWithdraw = async () => {
+    if (!address) return;
+
+    const withdrawAmount = prompt('¿Cuánto SOL deseas retirar? (Disponible: ' + balance + ' SOL)');
+    if (!withdrawAmount || parseFloat(withdrawAmount) <= 0) {
+      return;
+    }
+
+    if (parseFloat(withdrawAmount) > parseFloat(balance)) {
+      alert('No tienes suficiente balance para retirar esa cantidad');
+      return;
+    }
+
+    try {
+      await withdrawBalance(address, withdrawAmount);
+      alert(`¡Retiro exitoso! ${withdrawAmount} SOL han sido enviados a tu wallet`);
+      await loadPlayerData();
+    } catch (error: any) {
+      alert(`Error al retirar: ${error.message}`);
+    }
   };
 
   return (
@@ -322,6 +367,7 @@ export default function Home() {
               onPlaceMultiNumberBet={handlePlaceMultiNumberBet}
               isSpinning={isSpinning}
               balance={balance}
+              onWithdraw={handleWithdraw}
             />
 
             {/* How to Play */}
