@@ -282,5 +282,160 @@ export function createRouletteRoutes(rouletteService: RouletteService, userServi
     }
   });
 
+  /**
+   * POST /roulette/play-with-balance
+   * Play roulette using casino balance (no payment signature required)
+   */
+  router.post('/play-with-balance', async (req: Request, res: Response) => {
+    try {
+      const { walletAddress, bets } = req.body;
+
+      if (!walletAddress) {
+        res.status(400).json({
+          success: false,
+          error: 'walletAddress is required',
+        });
+        return;
+      }
+
+      // Create bet DTO
+      const betDto: PlaceBetDto = { bets };
+
+      // Validate with schema
+      const validation = PlaceBetSchema.safeParse(betDto);
+      if (!validation.success) {
+        res.status(400).json({
+          success: false,
+          error: 'Invalid bet data',
+          details: validation.error.issues,
+        });
+        return;
+      }
+
+      // Get user
+      let user;
+      try {
+        user = await userService.getUserByWallet(walletAddress);
+      } catch {
+        res.status(404).json({
+          success: false,
+          error: 'User not found. Please deposit first.',
+        });
+        return;
+      }
+
+      // Play the game (will deduct from balance)
+      const game = await rouletteService.playRouletteWithBalance(user.id, validation.data);
+
+      const won = parseFloat(game.profit) > 0;
+      res.json({
+        success: true,
+        data: {
+          gameId: game.id,
+          result: game.result,
+          totalBet: game.totalBetAmount,
+          totalWin: game.totalWinAmount,
+          profit: game.profit,
+          won,
+          message: won
+            ? `Congratulations! You won ${game.totalWinAmount} SOL!`
+            : `Sorry, you lost. The winning number was ${game.result}.`,
+        },
+      });
+    } catch (error) {
+      console.error('Balance bet error:', error);
+      res.status(400).json({
+        success: false,
+        error: error instanceof Error ? error.message : 'Bet failed',
+      });
+    }
+  });
+
+  /**
+   * POST /roulette/quick-bet-with-balance
+   * Quick bet using casino balance (no payment signature required)
+   */
+  router.post('/quick-bet-with-balance', async (req: Request, res: Response) => {
+    try {
+      const { walletAddress, type } = req.body;
+
+      if (!walletAddress || !type) {
+        res.status(400).json({
+          success: false,
+          error: 'walletAddress and type are required',
+        });
+        return;
+      }
+
+      // Validate bet type
+      if (!Object.values(BetType).includes(type)) {
+        res.status(400).json({
+          success: false,
+          error: `Invalid bet type: ${type}`,
+        });
+        return;
+      }
+
+      // Determine default amount based on bet type
+      const isNumberBet = [BetType.STRAIGHT, BetType.SPLIT, BetType.STREET, BetType.CORNER, BetType.LINE].includes(type as BetType);
+      const defaultAmount = isNumberBet ? '0.01' : '0.001'; // SOL
+
+      // Create bet DTO
+      const betDto: PlaceBetDto = {
+        bets: [
+          {
+            type: type as BetType,
+            numbers: [],
+            amount: defaultAmount,
+          },
+        ],
+      };
+
+      // Validate with schema
+      const validation = PlaceBetSchema.safeParse(betDto);
+      if (!validation.success) {
+        res.status(400).json({
+          success: false,
+          error: 'Invalid bet data',
+          details: validation.error.issues,
+        });
+        return;
+      }
+
+      // Get user
+      let user;
+      try {
+        user = await userService.getUserByWallet(walletAddress);
+      } catch {
+        res.status(404).json({
+          success: false,
+          error: 'User not found. Please deposit first.',
+        });
+        return;
+      }
+
+      // Play the game
+      const game = await rouletteService.playRouletteWithBalance(user.id, validation.data);
+
+      const won = parseFloat(game.profit) > 0;
+      res.json({
+        success: true,
+        data: {
+          gameId: game.id,
+          result: game.result,
+          won,
+          profit: game.profit,
+          message: won ? `You won ${game.totalWinAmount} SOL!` : `You lost. Number was ${game.result}.`,
+        },
+      });
+    } catch (error) {
+      console.error('Quick bet with balance error:', error);
+      res.status(400).json({
+        success: false,
+        error: error instanceof Error ? error.message : 'Bet failed',
+      });
+    }
+  });
+
   return router;
 }

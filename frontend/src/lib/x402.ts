@@ -1,16 +1,22 @@
-import { PublicKey, Transaction } from '@solana/web3.js';
+import { PublicKey } from '@solana/web3.js';
 import bs58 from 'bs58';
-import { connection, FACILITATOR_URL, CASINO_API_URL } from './solana';
+import { CASINO_API_URL } from './solana';
 
-export interface PaymentRequest {
-  nonce: string;
+export interface PaymentPayload {
   amount: string;
   recipient: string;
   resourceId: string;
-  transactionSignature: string;
-  clientPublicKey: string;
+  resourceUrl: string;
+  nonce: string;
   timestamp: number;
+  expiry: number;
+}
+
+export interface PaymentRequest {
+  payload: PaymentPayload;
   signature: string;
+  clientPublicKey: string;
+  signedTransaction: string;
 }
 
 export interface StructuredData {
@@ -20,23 +26,22 @@ export interface StructuredData {
     chainId: string;
     verifyingContract: string;
   };
-  message: {
-    nonce: string;
-    amount: string;
-    recipient: string;
-    resourceId: string;
-    timestamp: number;
+  types: {
+    AuthorizationPayload: Array<{ name: string; type: string }>;
   };
+  primaryType: string;
+  message: PaymentPayload;
+}
+
+// Generate random nonce
+function generateNonce(): string {
+  const array = new Uint8Array(32);
+  crypto.getRandomValues(array);
+  return Array.from(array, byte => byte.toString(16).padStart(2, '0')).join('');
 }
 
 // Create structured data for signing
-export function createStructuredData(
-  nonce: string,
-  amount: string,
-  recipient: string,
-  resourceId: string,
-  timestamp: number
-): StructuredData {
+function createStructuredData(payload: PaymentPayload): StructuredData {
   return {
     domain: {
       name: 'x402-solana-protocol',
@@ -44,133 +49,110 @@ export function createStructuredData(
       chainId: 'devnet',
       verifyingContract: 'x402-sol',
     },
-    message: {
-      nonce,
-      amount,
-      recipient,
-      resourceId,
-      timestamp,
+    types: {
+      AuthorizationPayload: [
+        { name: 'amount', type: 'string' },
+        { name: 'recipient', type: 'string' },
+        { name: 'resourceId', type: 'string' },
+        { name: 'resourceUrl', type: 'string' },
+        { name: 'nonce', type: 'string' },
+        { name: 'timestamp', type: 'uint64' },
+        { name: 'expiry', type: 'uint64' },
+      ],
     },
+    primaryType: 'AuthorizationPayload',
+    message: payload,
   };
 }
 
-// Serialize structured data for signing
-export function serializeStructuredData(data: StructuredData): string {
-  return JSON.stringify(data, Object.keys(data).sort());
+// Serialize structured data for signing (matches CLI)
+function serializeStructuredData(data: StructuredData): string {
+  return JSON.stringify(data);
 }
 
-// Sign structured data with wallet
-export async function signStructuredData(
-  data: StructuredData,
-  walletPublicKey: PublicKey,
-  signMessage: (message: Uint8Array) => Promise<Uint8Array>
-): Promise<string> {
-  const serialized = serializeStructuredData(data);
-  const messageBytes = new TextEncoder().encode(serialized);
-  const signature = await signMessage(messageBytes);
-  return bs58.encode(signature);
-}
-
-// Request nonce from facilitator
-export async function requestNonce(clientPublicKey: string): Promise<string> {
-  const response = await fetch(`${FACILITATOR_URL}/nonce`, {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-    },
-    body: JSON.stringify({ clientPublicKey }),
-  });
-
-  if (!response.ok) {
-    throw new Error('Failed to request nonce');
-  }
-
-  const data = await response.json();
-  return data.nonce;
-}
-
-// Pay facilitator to get transaction signature
-export async function payFacilitator(
-  walletPublicKey: PublicKey,
-  sendTransaction: (transaction: Transaction) => Promise<string>,
-  amount: string,
-  nonce: string
-): Promise<string> {
-  const response = await fetch(`${FACILITATOR_URL}/prepare-payment`, {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-    },
-    body: JSON.stringify({
-      clientPublicKey: walletPublicKey.toBase58(),
-      amount,
-      nonce,
-    }),
-  });
-
-  if (!response.ok) {
-    throw new Error('Failed to prepare payment');
-  }
-
-  const { transaction: serializedTx } = await response.json();
-
-  // Deserialize and send transaction
-  const transaction = Transaction.from(Buffer.from(serializedTx, 'base64'));
-  const signature = await sendTransaction(transaction);
-
-  // Wait for confirmation
-  await connection.confirmTransaction(signature, 'confirmed');
-
-  return signature;
-}
-
-// Create payment request for x402 protocol
+// Create payment request for x402 protocol (matches CLI implementation)
 export async function createPaymentRequest(
   walletPublicKey: PublicKey,
+  signTransaction: (transaction: any) => Promise<any>,
   signMessage: (message: Uint8Array) => Promise<Uint8Array>,
-  sendTransaction: (transaction: Transaction) => Promise<string>,
   amount: string,
-  resourceId: string
+  resourceUrl: string
 ): Promise<PaymentRequest> {
-  // 1. Request nonce
-  const nonce = await requestNonce(walletPublicKey.toBase58());
+  const merchantAddress = process.env.NEXT_PUBLIC_RECEIVER_ADDRESS || '';
 
-  // 2. Pay facilitator
-  const transactionSignature = await payFacilitator(
-    walletPublicKey,
-    sendTransaction,
-    amount,
-    nonce
-  );
-
-  // 3. Create structured data
+  // 1. Create nonce and timestamps
+  const nonce = generateNonce();
   const timestamp = Date.now();
-  const recipient = process.env.NEXT_PUBLIC_MERCHANT_ADDRESS || '';
-  const structuredData = createStructuredData(
-    nonce,
-    amount,
-    recipient,
-    resourceId,
-    timestamp
-  );
+  const expiry = timestamp + 300000; // 5 minutes
 
-  // 4. Sign structured data
-  const signature = await signStructuredData(
-    structuredData,
-    walletPublicKey,
-    signMessage
-  );
-
-  // 5. Return payment request
-  return {
-    nonce,
+  // 2. Create payload
+  const payload: PaymentPayload = {
     amount,
-    recipient,
-    resourceId,
-    transactionSignature,
-    clientPublicKey: walletPublicKey.toBase58(),
+    recipient: merchantAddress,
+    resourceId: resourceUrl,
+    resourceUrl,
+    nonce,
     timestamp,
-    signature,
+    expiry,
+  };
+
+  // 3. Create structured data and sign authorization
+  const structuredData = createStructuredData(payload);
+  const messageToSign = serializeStructuredData(structuredData);
+  const messageBytes = new TextEncoder().encode(messageToSign);
+  const authSignature = await signMessage(messageBytes);
+
+  // 4. Create Solana transfer transaction locally
+  const { Connection, Transaction, SystemProgram } = await import('@solana/web3.js');
+
+  // Connect to Solana network
+  const network = process.env.NEXT_PUBLIC_NETWORK || 'solana-devnet';
+  const rpcUrl = network === 'solana-devnet'
+    ? 'https://api.devnet.solana.com'
+    : 'https://api.mainnet-beta.solana.com';
+  const connection = new Connection(rpcUrl, 'confirmed');
+
+  // Get facilitator public key (who pays the transaction fees)
+  const facilitatorPublicKey = process.env.NEXT_PUBLIC_FACILITATOR_PUBLIC_KEY;
+  if (!facilitatorPublicKey) {
+    throw new Error('NEXT_PUBLIC_FACILITATOR_PUBLIC_KEY not set');
+  }
+
+  // Get recent blockhash
+  const { blockhash } = await connection.getLatestBlockhash('confirmed');
+
+  // Create transaction with facilitator as feePayer (x402 sponsored transaction)
+  const transaction = new Transaction({
+    feePayer: new PublicKey(facilitatorPublicKey),
+    recentBlockhash: blockhash,
+  });
+
+  // Add transfer instruction (user sends SOL to merchant)
+  const lamports = BigInt(amount);
+  transaction.add(
+    SystemProgram.transfer({
+      fromPubkey: walletPublicKey,
+      toPubkey: new PublicKey(merchantAddress),
+      lamports: lamports,
+    })
+  );
+
+  // Sign transaction with wallet (user signs, facilitator will co-sign later)
+  const signedTransaction = await signTransaction(transaction);
+
+  // Serialize signed transaction to base64
+  const serializedTransaction = signedTransaction.serialize({
+    requireAllSignatures: false,
+    verifySignatures: true,
+  });
+  const signedTransactionBase64 = Buffer.from(serializedTransaction).toString('base64');
+
+  // 6. Return payment request
+  return {
+    payload,
+    signature: bs58.encode(authSignature),
+    clientPublicKey: walletPublicKey.toBase58(),
+    signedTransaction: signedTransactionBase64,
   };
 }
 
@@ -185,12 +167,12 @@ export async function placeBet(
       'Content-Type': 'application/json',
       'X-Payment': JSON.stringify(paymentRequest),
     },
-    body: JSON.stringify({ betType }),
+    body: JSON.stringify({ type: betType }),
   });
 
   if (!response.ok) {
-    const error = await response.json();
-    throw new Error(error.error || 'Failed to place bet');
+    const errorText = await response.text();
+    throw new Error(errorText || 'Failed to place bet');
   }
 
   return response.json();
@@ -220,21 +202,103 @@ export async function placeCustomBet(
 
 // Get player stats
 export async function getPlayerStats(walletAddress: string): Promise<any> {
-  const response = await fetch(`${CASINO_API_URL}/roulette/stats/${walletAddress}`);
+  const response = await fetch(`${CASINO_API_URL}/api/roulette/stats/${walletAddress}`);
 
   if (!response.ok) {
-    throw new Error('Failed to fetch stats');
+    return null; // Return null if user doesn't exist yet
+  }
+
+  const result = await response.json();
+  return result.data?.stats || null;
+}
+
+// Get wallet balance (casino balance, not blockchain balance)
+export async function getWalletBalance(walletAddress: string): Promise<any> {
+  try {
+    const response = await fetch(`${CASINO_API_URL}/wallet/balance/${walletAddress}`);
+
+    if (!response.ok) {
+      return { balance: '0.000' };
+    }
+
+    const result = await response.json();
+    // Backend returns: { success, data: { balance, availableBalance, ... } }
+    return {
+      balance: parseFloat(result.data?.availableBalance || '0').toFixed(3)
+    };
+  } catch (error) {
+    console.error('Error fetching balance:', error);
+    return { balance: '0.000' };
+  }
+}
+
+// Withdraw balance to wallet
+export async function withdrawBalance(
+  walletAddress: string,
+  amount: string
+): Promise<any> {
+  const response = await fetch(`${CASINO_API_URL}/wallet/withdraw`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({
+      destinationAddress: walletAddress,
+      amount,
+    }),
+  });
+
+  if (!response.ok) {
+    const error = await response.json();
+    throw new Error(error.error || 'Failed to withdraw');
   }
 
   return response.json();
 }
 
-// Get wallet balance
-export async function getWalletBalance(walletAddress: string): Promise<any> {
-  const response = await fetch(`${CASINO_API_URL}/wallet/balance/${walletAddress}`);
+// Place bet using casino balance (no payment signature required)
+export async function placeBetWithBalance(
+  walletAddress: string,
+  betType: string
+): Promise<any> {
+  const response = await fetch(`${CASINO_API_URL}/roulette/quick-bet-with-balance`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({
+      walletAddress,
+      type: betType,
+    }),
+  });
 
   if (!response.ok) {
-    throw new Error('Failed to fetch balance');
+    const error = await response.json();
+    throw new Error(error.error || 'Failed to place bet');
+  }
+
+  return response.json();
+}
+
+// Place custom bet using casino balance
+export async function placeCustomBetWithBalance(
+  walletAddress: string,
+  bets: Array<{ type: string; numbers: number[]; amount: string }>
+): Promise<any> {
+  const response = await fetch(`${CASINO_API_URL}/roulette/play-with-balance`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({
+      walletAddress,
+      bets,
+    }),
+  });
+
+  if (!response.ok) {
+    const error = await response.json();
+    throw new Error(error.error || 'Failed to place bet');
   }
 
   return response.json();

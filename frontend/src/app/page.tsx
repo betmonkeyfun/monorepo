@@ -2,25 +2,19 @@
 
 import { useState, useEffect } from 'react';
 import { useAppKitAccount, useAppKitProvider } from '@reown/appkit/react';
-import { Transaction } from '@solana/web3.js';
+import { PublicKey } from '@solana/web3.js';
 import dynamic from 'next/dynamic';
 import { modal } from '@/contexts/WalletContext';
-import {
-  createPaymentRequest,
-  placeBet,
-  placeCustomBet,
-  getPlayerStats,
-  getWalletBalance,
-} from '@/lib/x402';
+import { getPlayerStats, getWalletBalance, createPaymentRequest, withdrawBalance, placeBetWithBalance, placeCustomBetWithBalance } from '@/lib/x402';
 import BettingInterface from '@/components/roulette/BettingInterface';
 import CoinAnimation, { WinningAnimation, LosingAnimation } from '@/components/roulette/CoinAnimation';
 
-// Dynamic import for RouletteWheel to avoid SSR issues with Three.js
-const RouletteWheel = dynamic(() => import('@/components/roulette/RouletteWheel'), {
+// Use simple 2D roulette (more stable than 3D)
+const RouletteWheel = dynamic(() => import('@/components/roulette/SimpleRouletteWheel'), {
   ssr: false,
   loading: () => (
     <div className="w-full h-[600px] rounded-2xl bg-gray-900 flex items-center justify-center">
-      <div className="text-white text-xl">Loading 3D Roulette...</div>
+      <div className="text-white text-xl">Loading Roulette...</div>
     </div>
   ),
 });
@@ -59,8 +53,8 @@ export default function Home() {
     }
   };
 
-  const handlePlaceBet = async (betType: string, amount: string) => {
-    if (!address || !isConnected || !walletProvider) {
+  const handlePlaceBet = async (betType: string, amount: string, useBalance: boolean) => {
+    if (!address || !isConnected) {
       modal.open();
       return;
     }
@@ -70,34 +64,81 @@ export default function Home() {
     setGameResult(null);
 
     try {
-      // Convert amount to lamports
+      // If using casino balance, use the balance-based endpoint (no signature required)
+      if (useBalance) {
+        const result = await placeBetWithBalance(address, betType);
+
+        setWinningNumber(result.data.result);
+        setGameResult({
+          game: {
+            winningNumber: result.data.result,
+            totalWinAmount: result.data.won ? result.data.profit : '0',
+          },
+        });
+
+        // Refresh balance
+        await loadPlayerData();
+        return;
+      }
+
+      // Otherwise, create new payment transaction
+      if (!walletProvider) {
+        modal.open();
+        return;
+      }
+
+      // Convert amount to lamports (0.001 SOL = 1000000 lamports)
       const amountLamports = (parseFloat(amount) * 1e9).toString();
 
-      // Create payment request using x402 protocol
+      // Create payment request with wallet signatures
       const paymentRequest = await createPaymentRequest(
-        { toBase58: () => address } as any,
-        async (message: Uint8Array) => {
-          // Sign message using wallet
-          const result = await walletProvider.signMessage(message);
-          return result.signature;
+        new PublicKey(address),
+        // Transaction signing function
+        async (transaction: any) => {
+          if (!walletProvider.signTransaction) {
+            throw new Error('Wallet does not support transaction signing');
+          }
+          return await walletProvider.signTransaction(transaction);
         },
-        async (transaction: Transaction) => {
-          // Send transaction using wallet
-          const result = await walletProvider.sendTransaction(transaction, {
-            skipPreflight: false,
-          });
-          return result;
+        // Message signing function
+        async (message: Uint8Array) => {
+          const result = await walletProvider.signMessage(message);
+          if (result instanceof Uint8Array) return result;
+          if (result.signature instanceof Uint8Array) return result.signature;
+          return new Uint8Array(result.signature || result);
         },
         amountLamports,
-        `roulette-${betType}-${Date.now()}`
+        '/play/quick'
       );
 
-      // Place bet
-      const result = await placeBet(paymentRequest, betType);
+      // Send request with payment in X-PAYMENT header
+      const CASINO_API_URL = process.env.NEXT_PUBLIC_CASINO_API_URL || 'http://localhost:3003';
+      const response = await fetch(`${CASINO_API_URL}/play/quick`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'X-PAYMENT': JSON.stringify(paymentRequest),
+        },
+        body: JSON.stringify({
+          type: betType,
+        }),
+      });
 
-      // Set winning number and show result
-      setWinningNumber(result.game.winningNumber);
-      setGameResult(result);
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.message || error.error || 'Bet failed');
+      }
+
+      const result = await response.json();
+
+      // Backend returns: { success, data: { result, won, profit, message } }
+      setWinningNumber(result.data.result);
+      setGameResult({
+        game: {
+          winningNumber: result.data.result,
+          totalWinAmount: result.data.won ? result.data.profit : '0',
+        },
+      });
 
       // Refresh balance
       await loadPlayerData();
@@ -108,7 +149,7 @@ export default function Home() {
     }
   };
 
-  const handlePlaceNumberBet = async (number: number, amount: string) => {
+  const handlePlaceMultiNumberBet = async (numbers: number[], amount: string) => {
     if (!address || !isConnected || !walletProvider) {
       modal.open();
       return;
@@ -119,38 +160,66 @@ export default function Home() {
     setGameResult(null);
 
     try {
-      // Convert amount to lamports
-      const amountLamports = (parseFloat(amount) * 1e9).toString();
+      // Calculate total cost (each number costs the amount)
+      const totalCost = numbers.length * parseFloat(amount);
+      const amountLamports = (totalCost * 1e9).toString();
 
-      // Create payment request
+      // Create payment request with wallet signatures
       const paymentRequest = await createPaymentRequest(
-        { toBase58: () => address } as any,
+        new PublicKey(address),
+        // Transaction signing function
+        async (transaction: any) => {
+          if (!walletProvider.signTransaction) {
+            throw new Error('Wallet does not support transaction signing');
+          }
+          return await walletProvider.signTransaction(transaction);
+        },
+        // Message signing function
         async (message: Uint8Array) => {
           const result = await walletProvider.signMessage(message);
-          return result.signature;
-        },
-        async (transaction: Transaction) => {
-          const result = await walletProvider.sendTransaction(transaction, {
-            skipPreflight: false,
-          });
-          return result;
+          if (result instanceof Uint8Array) return result;
+          if (result.signature instanceof Uint8Array) return result.signature;
+          return new Uint8Array(result.signature || result);
         },
         amountLamports,
-        `roulette-number-${number}-${Date.now()}`
+        '/play/custom'
       );
 
-      // Place custom bet
-      const result = await placeCustomBet(paymentRequest, [
-        {
-          type: 'straight',
-          numbers: [number],
-          amount,
-        },
-      ]);
+      // Create bets array - one bet per number
+      const bets = numbers.map(number => ({
+        type: 'straight',
+        numbers: [number],
+        amount: amount,
+      }));
 
-      // Set winning number and show result
-      setWinningNumber(result.game.winningNumber);
-      setGameResult(result);
+      // Send request with payment in X-PAYMENT header
+      const CASINO_API_URL = process.env.NEXT_PUBLIC_CASINO_API_URL || 'http://localhost:3003';
+      const response = await fetch(`${CASINO_API_URL}/play/custom`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'X-PAYMENT': JSON.stringify(paymentRequest),
+        },
+        body: JSON.stringify({
+          bets,
+        }),
+      });
+
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.message || error.error || 'Bet failed');
+      }
+
+      const result = await response.json();
+
+      // Backend returns: { success, data: { result, won, totalWin, totalBet, profit, message } }
+      setWinningNumber(result.data.result);
+      setGameResult({
+        game: {
+          winningNumber: result.data.result,
+          totalWinAmount: result.data.totalWin,
+        },
+      });
 
       // Refresh balance
       await loadPlayerData();
@@ -250,7 +319,7 @@ export default function Home() {
             {/* Betting Interface */}
             <BettingInterface
               onPlaceBet={handlePlaceBet}
-              onPlaceNumberBet={handlePlaceNumberBet}
+              onPlaceMultiNumberBet={handlePlaceMultiNumberBet}
               isSpinning={isSpinning}
               balance={balance}
             />

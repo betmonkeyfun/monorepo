@@ -310,6 +310,15 @@ export class RouletteService {
   }
 
   /**
+   * Play roulette using casino balance (alias for playRoulette)
+   * This method is semantically the same as playRoulette but with a clearer name
+   * for when the user is explicitly using their casino balance
+   */
+  async playRouletteWithBalance(userId: string, dto: PlaceBetDto): Promise<Game> {
+    return this.playRoulette(userId, dto);
+  }
+
+  /**
    * Get game by ID with all bets
    */
   async getGameById(gameId: string): Promise<Game & { bets: Bet[] }> {
