@@ -279,5 +279,15 @@ echo "• Database (unified): ./data/casino.db"
 echo "  ├─ Casino data (users, wallets, games, bets)"
 echo "  └─ Nonces (x402 protocol, replay protection)"
 echo ""
+
+# Step 10: Setup player
+echo "Step 10: Setting up player..."
+echo "------------------------------"
+if [ -f "./setup-player.sh" ]; then
+    bash ./setup-player.sh
+else
+    print_info "Player setup script not found, skipping..."
+fi
+
 print_success "Ready to play! 🎰"
 echo ""
