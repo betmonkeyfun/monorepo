@@ -26,6 +26,12 @@ const ROULETTE_NUMBERS = [
   { number: 3, color: 'red' }, { number: 26, color: 'black' },
 ];
 
+const TOTAL_SEGMENTS = ROULETTE_NUMBERS.length;
+const ANGLE_PER_SEGMENT = 360 / TOTAL_SEGMENTS;
+const BASE_START_ANGLE = -90 - ANGLE_PER_SEGMENT / 2; // zero centered at top
+
+const toRadians = (deg: number) => (deg * Math.PI) / 180;
+
 interface SimpleRouletteWheelProps {
   isSpinning: boolean;
   winningNumber: number | null;
@@ -43,6 +49,10 @@ interface Coin {
 export default function SimpleRouletteWheel({ isSpinning, winningNumber, onSpinComplete }: SimpleRouletteWheelProps) {
   const wheelRef = useRef<HTMLDivElement>(null);
   const ballRef = useRef<HTMLDivElement>(null);
+  const wheelRotationRef = useRef(0);
+  const ballRotationRef = useRef(0);
+  const wheelTweenRef = useRef<gsap.core.Tween | null>(null);
+  const ballTimelineRef = useRef<gsap.core.Timeline | null>(null);
   const [displayNumber, setDisplayNumber] = useState<number | null>(null);
   const [displayColor, setDisplayColor] = useState<string>('');
   const [coins, setCoins] = useState<Coin[]>([]);
@@ -53,7 +63,26 @@ export default function SimpleRouletteWheel({ isSpinning, winningNumber, onSpinC
     if (isSpinning && winningNumber !== null && wheelRef.current && ballRef.current) {
       const winningSlot = ROULETTE_NUMBERS.find(n => n.number === winningNumber);
       const winningIndex = ROULETTE_NUMBERS.findIndex(n => n.number === winningNumber);
-      const anglePerSegment = 360 / ROULETTE_NUMBERS.length;
+
+      if (!winningSlot || winningIndex === -1) {
+        return;
+      }
+
+      // Kill previous animations before starting a new spin
+      if (wheelTweenRef.current) {
+        wheelTweenRef.current.kill();
+        const currentValue = gsap.getProperty(wheelRef.current, 'rotation');
+        if (typeof currentValue === 'number') {
+          wheelRotationRef.current = currentValue;
+        }
+      }
+      if (ballTimelineRef.current) {
+        ballTimelineRef.current.kill();
+        const currentBallValue = gsap.getProperty(ballRef.current, 'rotation');
+        if (typeof currentBallValue === 'number') {
+          ballRotationRef.current = currentBallValue;
+        }
+      }
 
       // Reset display
       setDisplayNumber(null);
@@ -62,61 +91,75 @@ export default function SimpleRouletteWheel({ isSpinning, winningNumber, onSpinC
       setShowExplosion(false);
       setIsWinner(false);
 
-      // Calculate target angle - align winning segment to top
-      const targetAngle = -90 - (winningIndex * anglePerSegment);
-
-      // Add rotations for effect
+      const slotMidAngle = winningIndex * ANGLE_PER_SEGMENT; // 0deg = top, clockwise positive
+      const ballOffset = (Math.random() - 0.5) * ANGLE_PER_SEGMENT * 0.6;
+      const ballFinalAngle = slotMidAngle + ballOffset;
+      const alignmentBase = ballFinalAngle - slotMidAngle; // equals ballOffset
+      const currentRotation = wheelRotationRef.current;
       const extraRotations = 6 + Math.random() * 2;
-      const totalRotation = extraRotations * 360 + targetAngle;
+      const minRotation = currentRotation + extraRotations * 360;
+      let targetRotation = alignmentBase;
+      while (targetRotation < minRotation) {
+        targetRotation += 360;
+      }
 
-      // Reset position
-      gsap.set(wheelRef.current, { rotation: 0 });
-      gsap.set(ballRef.current, { rotation: 0, scale: 1 });
+      gsap.set(ballRef.current, { rotation: ballRotationRef.current, scale: 1 });
 
-      // Animate wheel
-      gsap.to(wheelRef.current, {
-        rotation: totalRotation,
-        duration: 5,
-        ease: 'power3.out',
+      // Animate wheel with buttery easing
+      wheelTweenRef.current = gsap.to(wheelRef.current, {
+        rotation: targetRotation,
+        duration: 5.4,
+        ease: 'power3.inOut',
         onComplete: () => {
-          // Normalize rotation to prevent visual deformation
-          if (wheelRef.current) {
-            const normalizedRotation = targetAngle % 360;
-            gsap.set(wheelRef.current, { rotation: normalizedRotation });
-          }
-          if (winningSlot) {
-            setDisplayNumber(winningSlot.number);
-            setDisplayColor(winningSlot.color);
+          wheelRotationRef.current = targetRotation;
+          setDisplayNumber(winningSlot.number);
+          setDisplayColor(winningSlot.color);
 
-            // Check if it's a win (you'll need to pass this from parent, for now assume random)
-            // In real implementation, check against the bet
-            const didWin = Math.random() > 0.5; // Replace with actual win condition
-            setIsWinner(didWin);
+          // Check if it's a win (placeholder logic)
+          const didWin = Math.random() > 0.5; // Replace with actual win condition
+          setIsWinner(didWin);
 
-            if (didWin) {
-              // EXPLOSION OF COINS!
-              setShowExplosion(true);
-              createCoinExplosion();
-            }
+          if (didWin) {
+            setShowExplosion(true);
+            createCoinExplosion();
           }
           setTimeout(() => onSpinComplete(), 500);
         }
       });
 
-      // Animate ball
+      // Animate ball with staggered easing to mimic bouncing into pocket
       const ballTimeline = gsap.timeline();
+      ballTimelineRef.current = ballTimeline;
+      const currentBallRotation = ballRotationRef.current;
+      const ballExtraSpins = 7 + Math.random() * 2;
+      let targetBallRotation = ballFinalAngle - ballExtraSpins * 360;
+      while (targetBallRotation >= currentBallRotation - ANGLE_PER_SEGMENT) {
+        targetBallRotation -= 360;
+      }
       ballTimeline.to(ballRef.current, {
-        rotation: -totalRotation * 1.2,
-        duration: 3.5,
-        ease: 'power2.in',
+        rotation: targetBallRotation,
+        duration: 4,
+        ease: 'power2.out',
       });
       ballTimeline.to(ballRef.current, {
-        scale: 0.8,
-        duration: 0.8,
+        scale: 0.82,
+        duration: 1,
         ease: 'power1.out'
-      }, '-=1');
+      }, '-=1.3');
+      ballTimeline.eventCallback('onComplete', () => {
+        const normalized = ((ballFinalAngle % 360) + 360) % 360;
+        gsap.set(ballRef.current, { rotation: normalized });
+        ballRotationRef.current = normalized;
+      });
     }
   }, [isSpinning, winningNumber, onSpinComplete]);
+
+  useEffect(() => {
+    return () => {
+      wheelTweenRef.current?.kill();
+      ballTimelineRef.current?.kill();
+    };
+  }, []);
 
   const createCoinExplosion = () => {
     const coinCount = 30;
@@ -148,15 +191,15 @@ export default function SimpleRouletteWheel({ isSpinning, winningNumber, onSpinC
   };
 
   return (
-    <div className="w-full h-[420px] flex flex-col items-center justify-center bg-gradient-to-br from-gray-950 via-gray-900 to-black rounded-2xl relative overflow-visible">
+    <div className="w-full h-[540px] flex flex-col items-center justify-center bg-gradient-to-br from-gray-950 via-gray-900 to-black rounded-2xl relative overflow-visible">
       {/* Ambient glow effect */}
       <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,rgba(234,179,8,0.15)_0%,transparent_60%)] pointer-events-none rounded-2xl"></div>
 
       {/* Wheel container */}
-      <div className="relative w-[380px] h-[380px]">
+      <div className="relative w-[460px] h-[460px]">
         {/* Outer wooden rim with premium finish */}
         <div
-          className="absolute inset-0 rounded-full border-[10px] border-yellow-700 overflow-hidden"
+          className="absolute inset-0 rounded-full border-[14px] border-yellow-700 overflow-hidden"
           style={{
             background: 'radial-gradient(circle, #4a2f1a 0%, #2d1810 100%)',
             boxShadow: '0 15px 50px rgba(0,0,0,0.6), inset 0 0 30px rgba(0,0,0,0.4), 0 0 60px rgba(234,179,8,0.2)'
@@ -169,30 +212,34 @@ export default function SimpleRouletteWheel({ isSpinning, winningNumber, onSpinC
             }}
           ></div>
           {/* Golden decorative ring */}
-          <div className="absolute inset-2 rounded-full border-[5px] border-yellow-600 shadow-inner" style={{
+          <div className="absolute inset-3 rounded-full border-[5px] border-yellow-600 shadow-inner" style={{
             boxShadow: 'inset 0 2px 8px rgba(0,0,0,0.6), 0 0 15px rgba(234,179,8,0.4)'
           }}></div>
 
           {/* Wheel segments */}
           <div
             ref={wheelRef}
-            className="absolute inset-5 rounded-full overflow-hidden"
+            className="absolute inset-7 rounded-full overflow-hidden"
             style={{
               transformOrigin: 'center',
               boxShadow: 'inset 0 0 40px rgba(0,0,0,0.5)'
             }}
           >
             {ROULETTE_NUMBERS.map((slot, i) => {
-              const anglePerSegment = 360 / ROULETTE_NUMBERS.length;
-              const angle = i * anglePerSegment;
-              const midAngle = angle + anglePerSegment / 2;
+              const startAngle = BASE_START_ANGLE + i * ANGLE_PER_SEGMENT;
+              const endAngle = startAngle + ANGLE_PER_SEGMENT;
+              const midAngle = startAngle + ANGLE_PER_SEGMENT / 2;
+              const startRad = toRadians(startAngle);
+              const endRad = toRadians(endAngle);
+              const isHighlighted = !isSpinning && displayNumber === slot.number;
 
               return (
                 <div
                   key={i}
-                  className={`absolute inset-0 ${getColorClass(slot.color)}`}
+                  className={`absolute inset-0 ${getColorClass(slot.color)} ${isHighlighted ? 'shadow-[0_0_25px_rgba(250,204,21,0.9)]' : ''}`}
                   style={{
-                    clipPath: `polygon(50% 50%, ${50 + 50 * Math.cos((angle * Math.PI) / 180)}% ${50 + 50 * Math.sin((angle * Math.PI) / 180)}%, ${50 + 50 * Math.cos(((angle + anglePerSegment) * Math.PI) / 180)}% ${50 + 50 * Math.sin(((angle + anglePerSegment) * Math.PI) / 180)}%)`,
+                    clipPath: `polygon(50% 50%, ${50 + 50 * Math.cos(startRad)}% ${50 + 50 * Math.sin(startRad)}%, ${50 + 50 * Math.cos(endRad)}% ${50 + 50 * Math.sin(endRad)}%)`,
+                    filter: isHighlighted ? 'brightness(1.3)' : 'none'
                   }}
                 >
                   {/* Subtle gradient overlay for depth */}
@@ -202,14 +249,14 @@ export default function SimpleRouletteWheel({ isSpinning, winningNumber, onSpinC
 
                   {/* Number - crystal clear */}
                   <div
-                    className="absolute text-white font-black text-xl tracking-tight"
+                    className="absolute text-white font-black text-2xl tracking-tight"
                     style={{
                       left: '50%',
                       top: '50%',
                       textShadow: '0 3px 6px rgba(0,0,0,1), 0 0 10px rgba(0,0,0,0.8)',
                       transform: `
                         rotate(${midAngle}deg)
-                        translateY(-155px)
+                        translateY(-190px)
                         rotate(-${midAngle}deg)
                         translate(-50%, -50%)
                       `,
@@ -224,12 +271,12 @@ export default function SimpleRouletteWheel({ isSpinning, winningNumber, onSpinC
 
           {/* Premium center hub */}
           <div
-            className="absolute top-1/2 left-1/2 w-24 h-24 -ml-12 -mt-12 rounded-full bg-gradient-to-br from-yellow-400 via-yellow-500 to-yellow-700"
+            className="absolute top-1/2 left-1/2 w-32 h-32 -ml-16 -mt-16 rounded-full bg-gradient-to-br from-yellow-400 via-yellow-500 to-yellow-700"
             style={{
               boxShadow: '0 6px 20px rgba(0,0,0,0.5), inset 0 3px 6px rgba(255,255,255,0.5), inset 0 -3px 6px rgba(0,0,0,0.3)'
             }}
           >
-            <div className="absolute inset-4 rounded-full border-[3px] border-yellow-300/50" style={{
+            <div className="absolute inset-5 rounded-full border-[3px] border-yellow-300/50" style={{
               boxShadow: 'inset 0 2px 4px rgba(0,0,0,0.2)'
             }}></div>
             <div className="absolute top-1/2 left-1/2 w-4 h-4 -ml-2 -mt-2 rounded-full bg-yellow-800 shadow-inner"></div>
@@ -238,24 +285,14 @@ export default function SimpleRouletteWheel({ isSpinning, winningNumber, onSpinC
           {/* Chrome ball with realistic physics */}
           <div
             ref={ballRef}
-            className="absolute top-12 left-1/2 w-6 h-6 -ml-3 rounded-full z-20"
+            className="absolute top-10 left-1/2 w-7 h-7 -ml-[14px] rounded-full z-20"
             style={{
-              transformOrigin: 'center 178px',
+              transformOrigin: 'center 214px',
               background: 'radial-gradient(circle at 35% 35%, #ffffff, #f0f0f0 30%, #d0d0d0 60%, #808080 85%, #505050)',
               boxShadow: '0 4px 10px rgba(0,0,0,0.7), inset -2px -2px 3px rgba(0,0,0,0.4), inset 2px 2px 3px rgba(255,255,255,1)'
             }}
           ></div>
         </div>
-      </div>
-
-      {/* Premium arrow indicator */}
-      <div className="absolute top-6 left-1/2 -ml-4 z-30">
-        <div
-          className="w-0 h-0 border-l-[14px] border-l-transparent border-r-[14px] border-r-transparent border-t-[28px] border-t-yellow-500"
-          style={{
-            filter: 'drop-shadow(0 4px 8px rgba(0,0,0,0.6)) drop-shadow(0 0 10px rgba(234,179,8,0.5))',
-          }}
-        ></div>
       </div>
 
       {/* Winning number display - OVERLAY (doesn't affect layout) */}
