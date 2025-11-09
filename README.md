@@ -12,7 +12,7 @@ BetMonkey leverages Solana's high-performance blockchain and the x402 payment pr
 - **Decentralized**: No custodial wallets, users maintain control of funds
 - **Low Fees**: Leverages Solana's low transaction costs
 
-## Architectur
+## Architecture
 
 ```
 ┌─────────────────┐         ┌──────────────────┐         ┌─────────────────┐
