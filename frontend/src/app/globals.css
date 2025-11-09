@@ -23,6 +23,11 @@ body {
   margin: 0;
 }
 
+html {
+  scroll-snap-type: y mandatory;
+  scroll-behavior: smooth;
+}
+
 html,
 body {
   max-width: 100vw;
@@ -74,4 +79,154 @@ appkit-button {
     #1a1a1a 100%
   );
   background-size: 1000px 100%;
+}
+
+/* Rotating light rays */
+@keyframes rotate {
+  0% {
+    transform: translate(-50%, -50%) rotate(0deg);
+  }
+  100% {
+    transform: translate(-50%, -50%) rotate(360deg);
+  }
+}
+
+/* Moving grid pattern */
+@keyframes gridMove {
+  0% {
+    background-position: 0 0;
+  }
+  100% {
+    background-position: 100px 100px;
+  }
+}
+
+/* Floating animation for casino elements */
+@keyframes float {
+  0%, 100% {
+    transform: translateY(0) translateX(0) rotate(0deg);
+    opacity: 0.6;
+  }
+  25% {
+    transform: translateY(-20px) translateX(10px) rotate(5deg);
+    opacity: 0.8;
+  }
+  50% {
+    transform: translateY(-40px) translateX(-10px) rotate(-5deg);
+    opacity: 1;
+  }
+  75% {
+    transform: translateY(-20px) translateX(5px) rotate(3deg);
+    opacity: 0.8;
+  }
+}
+
+.animate-float {
+  animation: float 8s ease-in-out infinite;
+}
+
+/* Radial gradient utility */
+.bg-gradient-radial {
+  background: radial-gradient(circle, var(--tw-gradient-stops));
+}
+
+/* Animated gradient for cards */
+@keyframes gradientShift {
+  0% {
+    background-position: 0% 50%;
+  }
+  50% {
+    background-position: 100% 50%;
+  }
+  100% {
+    background-position: 0% 50%;
+  }
+}
+
+.animate-gradient {
+  animation: gradientShift 3s ease infinite;
+  background-size: 200% 200%;
+  transition: background-position 0.3s ease;
+}
+
+/* Gradient button with hover animation */
+.gradient-border {
+  position: relative;
+  background: linear-gradient(135deg, var(--gradient-from), var(--gradient-via), var(--gradient-to), var(--gradient-from));
+  background-size: 300% 300%;
+  animation: gradientMove 4s ease infinite;
+  transition: all 0.3s ease;
+}
+
+.gradient-border:hover {
+  animation: gradientMoveHover 1s ease infinite;
+  background-size: 400% 400%;
+}
+
+@keyframes gradientMove {
+  0% {
+    background-position: 0% 50%;
+  }
+  50% {
+    background-position: 100% 50%;
+  }
+  100% {
+    background-position: 0% 50%;
+  }
+}
+
+@keyframes gradientMoveHover {
+  0% {
+    background-position: 0% 50%;
+  }
+  50% {
+    background-position: 100% 50%;
+  }
+  100% {
+    background-position: 0% 50%;
+  }
+}
+
+/* Card gradient borders with hover animation */
+.card-gradient-red {
+  background: linear-gradient(135deg, #ff0000, #ff6b00, #ffa500, #ff0000);
+  background-size: 300% 300%;
+  animation: gradientMove 4s ease infinite;
+}
+
+.card-gradient-red:hover {
+  animation: gradientMoveHover 1s ease infinite;
+  background-size: 400% 400%;
+}
+
+.card-gradient-blue {
+  background: linear-gradient(135deg, #00d4ff, #0099ff, #3366ff, #00d4ff);
+  background-size: 300% 300%;
+  animation: gradientMove 4s ease infinite;
+}
+
+.card-gradient-blue:hover {
+  animation: gradientMoveHover 1s ease infinite;
+  background-size: 400% 400%;
+}
+
+.card-gradient-purple {
+  background: linear-gradient(135deg, #ff00ff, #cc00ff, #9900ff, #ff00ff);
+  background-size: 300% 300%;
+  animation: gradientMove 4s ease infinite;
+}
+
+.card-gradient-purple:hover {
+  animation: gradientMoveHover 1s ease infinite;
+  background-size: 400% 400%;
+}
+
+/* Hide scrollbar */
+.scrollbar-hide {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+
+.scrollbar-hide::-webkit-scrollbar {
+  display: none;
 }
