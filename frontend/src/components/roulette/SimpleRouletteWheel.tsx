@@ -79,10 +79,7 @@ export default function SimpleRouletteWheel({ isSpinning, winningNumber, onSpinC
   };
 
   return (
-    <div className="w-full h-[600px] flex flex-col items-center justify-center bg-gradient-to-br from-gray-950 via-gray-900 to-black rounded-2xl relative overflow-visible py-8">
-      {/* Ambient glow effect */}
-      <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,rgba(234,179,8,0.15)_0%,transparent_60%)] pointer-events-none rounded-2xl"></div>
-
+    <div className="w-full h-[600px] flex flex-col items-center justify-center relative overflow-visible py-8">
       {/* Roulette Wheel */}
       <div className="relative z-10 flex items-center justify-center">
         <Wheel

@@ -52,6 +52,7 @@ export default function Home() {
     router.push('/roulette');
   };
 
+
   const handlePokerClick = () => {
     router.push('/poker');
   };
@@ -169,6 +170,7 @@ export default function Home() {
               Play Poker
             </button>
           </div>
+
         </>
       ),
     },

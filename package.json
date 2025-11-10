@@ -8,16 +8,16 @@
   ],
   "scripts": {
     "build": "npm run build --workspaces --if-present",
-    "dev": "npm run dev:server & npm run dev:frontend & wait",
+    "dev": "npm run dev:server & cd frontend && npm run dev & wait",
     "clean": "npm run clean --workspaces --if-present",
     "lint": "npm run lint --workspaces --if-present",
     "fmt": "npm run fmt --workspaces --if-present",
     "fmt:check": "npm run fmt:check --workspaces --if-present",
     "test": "npm run test --workspaces --if-present",
     "dev:server": "npm run dev --workspace=server",
-    "dev:frontend": "npm run dev --workspace=frontend",
+    "dev:frontend": "cd frontend && npm run dev",
     "build:server": "npm run build --workspace=server",
-    "build:frontend": "npm run build --workspace=frontend"
+    "build:frontend": "cd frontend && npm run build"
   },
   "keywords": [
     "solana",

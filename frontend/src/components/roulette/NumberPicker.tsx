@@ -15,12 +15,27 @@ const NUMBER_GRID = [
   [1, 4, 7, 10, 13, 16, 19, 22, 25, 28, 31, 34],
 ];
 
-function getNumberColor(num: number): string {
-  if (num === 0) return 'bg-green-600 hover:bg-green-500';
+function getNumberColor(num: number): { gradient: string; border: string; glow: string } {
+  if (num === 0) {
+    return {
+      gradient: 'from-green-600 to-green-500',
+      border: 'border-green-400',
+      glow: 'hover:shadow-green-500/50'
+    };
+  }
   const redNumbers = [1, 3, 5, 7, 9, 12, 14, 16, 18, 19, 21, 23, 25, 27, 30, 32, 34, 36];
-  return redNumbers.includes(num)
-    ? 'bg-red-600 hover:bg-red-500'
-    : 'bg-gray-900 hover:bg-gray-800';
+  if (redNumbers.includes(num)) {
+    return {
+      gradient: 'from-red-600 to-red-500',
+      border: 'border-red-400',
+      glow: 'hover:shadow-red-500/50'
+    };
+  }
+  return {
+    gradient: 'from-gray-800 to-gray-900',
+    border: 'border-gray-600',
+    glow: 'hover:shadow-gray-500/50'
+  };
 }
 
 export default function NumberPicker({ onPlaceBet, isSpinning, useBalance }: NumberPickerProps) {
@@ -64,109 +79,123 @@ export default function NumberPicker({ onPlaceBet, isSpinning, useBalance }: Num
 
   return (
     <div className="w-full max-w-3xl mx-auto">
-      <div className="relative overflow-hidden bg-gradient-to-br from-gray-900 via-gray-800 to-black border border-red-500/30 rounded-xl p-3 shadow-lg">
-        <div className="relative">
-          <div className="flex justify-between items-center mb-3">
+      <div className="relative overflow-hidden bg-black/60 backdrop-blur-sm border border-red-500/20 rounded-2xl shadow-2xl">
+        <div className="relative p-6 pb-0">
+          <div className="flex justify-between items-center mb-6">
             <div>
-              <h3 className="text-lg font-bold bg-gradient-to-r from-red-400 via-yellow-200 to-red-400 bg-clip-text text-transparent">
+              <h3 className="text-2xl font-black text-white tracking-wide">
                 PICK NUMBERS
               </h3>
-              <p className="text-gray-400 text-xs">0.01 SOL • 35:1 Payout</p>
+              <p className="text-gray-500 text-sm mt-1">0.01 SOL per number • 35:1 Payout</p>
             </div>
             {selectedNumbers.length > 0 && (
               <button
                 onClick={clearSelection}
-                className="bg-gradient-to-r from-red-600 to-red-700 hover:from-red-500 hover:to-red-600 text-white px-3 py-1.5 rounded-lg text-xs font-bold transition-all"
+                className="bg-red-600/20 hover:bg-red-600/30 border border-red-500/40 text-red-400 px-4 py-2 rounded-lg text-sm font-bold transition-all"
               >
                 Clear ({selectedNumbers.length})
               </button>
             )}
           </div>
 
-          {/* Green/Zero Button - Compact */}
-          <div className="mb-3 flex justify-center">
+          {/* Green/Zero Button */}
+          <div className="mb-6 flex justify-center">
             <button
               onClick={() => toggleNumber(0)}
               disabled={isSpinning}
               className={`
-                ${selectedNumbers.includes(0) ? 'ring-2 ring-yellow-400 scale-105' : ''}
-                ${isSpinning ? 'opacity-50 cursor-not-allowed' : 'hover:scale-105'}
-                bg-gradient-to-br from-green-600 to-green-700 hover:from-green-500 hover:to-green-600
-                text-white font-bold py-3 px-8 rounded-xl
-                transition-all duration-150
-                border-2 border-green-400/50
+                group relative
+                ${selectedNumbers.includes(0) ? 'ring-4 ring-yellow-400 scale-110 shadow-2xl shadow-yellow-500/50' : ''}
+                ${isSpinning ? 'opacity-50 cursor-not-allowed' : 'hover:scale-110 hover:shadow-2xl hover:shadow-green-500/50'}
+                bg-gradient-to-br from-green-600 to-green-500
+                text-white font-black py-4 px-10 rounded-2xl
+                transition-all duration-200
+                border-3 border-green-400
                 disabled:transform-none
               `}
             >
-              <div className="text-2xl">0</div>
-              <div className="text-xs opacity-75">GREEN</div>
+              <div className="absolute inset-0 bg-gradient-to-t from-black/30 to-transparent group-hover:from-black/10 rounded-2xl"></div>
+              <div className="absolute inset-0 bg-white/10 opacity-0 group-hover:opacity-100 transition-opacity duration-200 rounded-2xl"></div>
+              <div className="relative">
+                <div className="text-3xl tracking-wider">0</div>
+                <div className="text-xs opacity-90 tracking-widest">GREEN</div>
+              </div>
             </button>
           </div>
 
-          {/* Number Grid - Compact */}
+          {/* Number Grid */}
           <div className="overflow-x-auto">
-            <div className="inline-block min-w-full">
+            <div className="inline-block min-w-full pt-2 px-2">
               {NUMBER_GRID.map((row, rowIndex) => (
-                <div key={rowIndex} className="flex gap-1 mb-1 justify-center">
-                  {row.map((number) => (
-                    <button
-                      key={number}
-                      onClick={() => toggleNumber(number)}
-                      disabled={isSpinning}
-                      className={`
-                        ${getNumberColor(number)}
-                        ${selectedNumbers.includes(number) ? 'ring-2 ring-yellow-400 scale-105' : ''}
-                        ${isSpinning ? 'opacity-50 cursor-not-allowed' : 'hover:scale-105 hover:brightness-125'}
-                        text-white font-bold w-11 h-11 rounded-lg
-                        transition-all duration-150 shadow-sm text-base
-                        border border-gray-700
-                        disabled:transform-none
-                      `}
-                    >
-                      {number}
-                    </button>
-                  ))}
+                <div key={rowIndex} className="flex gap-2 mb-2 justify-center">
+                  {row.map((number) => {
+                    const colors = getNumberColor(number);
+                    return (
+                      <button
+                        key={number}
+                        onClick={() => toggleNumber(number)}
+                        disabled={isSpinning}
+                        className={`
+                          group relative
+                          bg-gradient-to-br ${colors.gradient}
+                          ${selectedNumbers.includes(number) ? 'ring-3 ring-yellow-400 scale-110 shadow-xl shadow-yellow-500/50' : ''}
+                          ${isSpinning ? 'opacity-50 cursor-not-allowed' : `hover:scale-110 hover:shadow-xl ${colors.glow}`}
+                          text-white font-black w-12 h-12 rounded-xl
+                          transition-all duration-200 shadow-lg text-lg
+                          border-2 ${colors.border}
+                          disabled:transform-none
+                        `}
+                      >
+                        <div className="absolute inset-0 bg-gradient-to-t from-black/30 to-transparent group-hover:from-black/10 rounded-xl"></div>
+                        <div className="absolute inset-0 bg-white/10 opacity-0 group-hover:opacity-100 transition-opacity duration-200 rounded-xl"></div>
+                        <span className="relative">{number}</span>
+                      </button>
+                    );
+                  })}
                 </div>
               ))}
             </div>
           </div>
 
-          {/* Place Bet Button - Compact */}
-          {selectedNumbers.length > 0 && (
-            <div className="mt-3 bg-yellow-900/30 border border-yellow-500/50 rounded-lg p-3">
-              <div className="flex justify-between items-center mb-2">
-                <div>
-                  <p className="text-yellow-200 font-bold text-sm">
-                    {selectedNumbers.length === 1 ? 'STRAIGHT BET' : `${selectedNumbers.length} NUMBERS`}
-                  </p>
-                  <p className="text-yellow-100/70 text-xs">
+        </div>
+
+        {/* Place Bet Section - Always visible, full width */}
+        <div className="mt-6 relative bg-black/80 border-t border-yellow-500/20 p-5 rounded-b-2xl">
+          <div className="relative">
+            <div className="flex justify-between items-center mb-4">
+              <div>
+                <p className="text-white font-bold text-base">
+                  {selectedNumbers.length === 0 ? 'NO BETS' : selectedNumbers.length === 1 ? 'STRAIGHT BET' : `${selectedNumbers.length} NUMBERS`}
+                </p>
+                {selectedNumbers.length > 0 && (
+                  <p className="text-gray-400 text-sm mt-1">
                     {selectedNumbers.sort((a, b) => a - b).join(', ')}
                   </p>
-                </div>
-                <div className="text-right bg-black/30 rounded-lg px-3 py-1">
-                  <p className="text-yellow-300 text-xs">Cost</p>
-                  <p className="text-yellow-100 font-bold text-lg">
-                    {(selectedNumbers.length * 0.01).toFixed(3)} SOL
-                  </p>
-                </div>
+                )}
               </div>
-              <button
-                onClick={placeBet}
-                disabled={isSpinning}
-                className={`
-                  w-full bg-gradient-to-r from-yellow-600 to-orange-500
-                  hover:from-yellow-500 hover:to-orange-400
-                  text-white font-bold text-sm py-3 px-4 rounded-lg
-                  transition-all shadow-lg
-                  border border-yellow-400/50
-                  ${isSpinning ? 'opacity-50 cursor-not-allowed' : 'hover:scale-105'}
-                  disabled:transform-none
-                `}
-              >
-                PLACE BET
-              </button>
+              <div className="text-right">
+                <p className="text-gray-500 text-xs uppercase mb-1">Total Cost</p>
+                <p className="text-yellow-400 font-black text-2xl">
+                  {(selectedNumbers.length * 0.01).toFixed(3)} <span className="text-lg text-gray-400">SOL</span>
+                </p>
+              </div>
             </div>
-          )}
+            <button
+              onClick={placeBet}
+              disabled={isSpinning || selectedNumbers.length === 0}
+              className={`
+                w-full
+                bg-gradient-to-r from-yellow-600 to-yellow-500
+                hover:from-yellow-500 hover:to-yellow-400
+                text-black font-black text-lg py-4 px-6 rounded-xl
+                transition-all duration-200 shadow-xl
+                ${isSpinning || selectedNumbers.length === 0 ? 'opacity-40 cursor-not-allowed' : 'hover:shadow-2xl hover:shadow-yellow-500/20'}
+                disabled:hover:shadow-xl
+              `}
+            >
+              PLACE BET
+            </button>
+          </div>
         </div>
       </div>
     </div>
