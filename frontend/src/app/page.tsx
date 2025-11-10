@@ -57,6 +57,10 @@ export default function Home() {
     router.push('/poker');
   };
 
+  const handleTokenClick = () => {
+    router.push('/token');
+  };
+
   // Block scrolling until user clicks ENTER
   useEffect(() => {
     // Disable scrolling on mount
@@ -376,13 +380,13 @@ export default function Home() {
               </div>
             </div>
 
-            {/* Blackjack Card */}
+            {/* Token Card */}
             <div className="group relative" style={{ perspective: '2000px', transformStyle: 'preserve-3d' }}>
               {/* Glow behind card */}
-              <div className="absolute inset-0 bg-gradient-to-br from-blue-500/30 via-cyan-500/20 to-teal-500/30 blur-3xl scale-110 opacity-50 group-hover:opacity-70 transition-opacity duration-300" style={{ transform: 'translateZ(-50px)' }} />
+              <div className="absolute inset-0 bg-gradient-to-br from-green-500/30 via-emerald-500/20 to-teal-500/30 blur-3xl scale-110 opacity-50 group-hover:opacity-70 transition-opacity duration-300" style={{ transform: 'translateZ(-50px)' }} />
 
               <div
-                className="card-gradient-blue relative transition-all duration-500 hover:-translate-y-8 hover:scale-110 cursor-pointer group-hover:shadow-2xl"
+                className="card-gradient-green relative transition-all duration-500 hover:-translate-y-8 hover:scale-110 cursor-pointer group-hover:shadow-2xl"
                 style={{
                   borderRadius: '20px',
                   padding: '3px',
@@ -429,19 +433,19 @@ export default function Home() {
                 >
                 {/* Content */}
                 <div className="p-8 flex flex-col flex-1 justify-center">
-                  <h3 className="text-3xl font-bold text-blue-400 mb-3 tracking-wider">
-                    BLACKJACK
+                  <h3 className="text-3xl font-bold text-green-400 mb-3 tracking-wider">
+                    BMONKEY TOKEN
                   </h3>
                   <p className="text-gray-300 text-sm leading-relaxed mb-6 flex-1">
-                    Beat the dealer to 21. Strategy meets luck in this timeless card game classic. Coming soon!
+                    Buy & sell BMONKEY tokens. Price increases as casino reserves grow. Dynamic bonding curve trading.
                   </p>
 
                   {/* Play Button */}
                   <button
-                    disabled
-                    className="w-full py-3 bg-gray-700 text-gray-400 font-bold text-lg tracking-wider cursor-not-allowed rounded-lg"
+                    onClick={handleTokenClick}
+                    className="w-full py-3 bg-gradient-to-r from-green-600 via-emerald-600 to-green-600 hover:from-green-500 hover:via-emerald-500 hover:to-green-500 text-white font-bold text-lg tracking-wider transition-all duration-300 rounded-lg"
                   >
-                    COMING SOON
+                    TRADE NOW
                   </button>
                 </div>
                 </div>

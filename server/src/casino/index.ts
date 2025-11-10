@@ -17,6 +17,7 @@ import { createPokerRoutes } from './routes/poker.routes.js';
 import { createWalletRoutes } from './routes/wallet.routes.js';
 import { createX402MiddlewareWithUtils } from '../lib/x402-middleware.js';
 import { CasinoError } from './types/index.js';
+import { initializeTokenSystem, createTokenRoutes } from '../token/index.js';
 
 // ============================================================================
 // CONFIGURATION
@@ -97,7 +98,17 @@ async function initializeServices() {
 // ============================================================================
 
 async function setupRoutes() {
-  const { userService, walletService, rouletteService, pokerService } = await initializeServices();
+  const { db, userService, walletService, rouletteService, pokerService } = await initializeServices();
+
+  // Initialize token system
+  let tokenService;
+  try {
+    tokenService = await initializeTokenSystem(db);
+    console.log('Token system enabled');
+  } catch (error) {
+    console.warn('Token system not initialized:', error instanceof Error ? error.message : 'Unknown error');
+    console.warn('Casino will run without token functionality');
+  }
 
   // Health check
   app.get('/health', (_req: Request, res: Response) => {
@@ -174,6 +185,73 @@ async function setupRoutes() {
   app.use('/roulette', createRouletteRoutes(rouletteService, userService));
   app.use('/poker', createPokerRoutes(pokerService, userService));
   app.use('/wallet', createWalletRoutes(walletService, userService));
+
+  // Token routes (if enabled)
+  if (tokenService) {
+    app.use('/token', createTokenRoutes(tokenService));
+    console.log('Token API enabled at /token');
+
+    // Token buy with x402 payment
+    const tokenBuyMiddleware = createX402MiddlewareWithUtils(
+      {
+        amount: '0.01', // Dynamic - will be overridden by request
+        payTo: MERCHANT_ADDRESS,
+        asset: 'SOL',
+        network: `solana-${SOLANA_NETWORK}`,
+      },
+      {
+        facilitatorUrl: FACILITATOR_URL,
+        timeout: 30000,
+        retryAttempts: 3,
+      }
+    );
+
+    app.post('/token/buy-x402', tokenBuyMiddleware.middleware, async (req: Request, res: Response) => {
+      try {
+        const { amount } = req.body; // Amount in SOL to spend
+
+        if (!amount || parseFloat(amount) <= 0) {
+          res.status(400).json({
+            success: false,
+            error: 'Invalid amount'
+          });
+          return;
+        }
+
+        const walletAddress = req.payment?.clientPublicKey || 'anonymous';
+        const paymentAmountSOL = req.payment?.amount
+          ? (BigInt(req.payment.amount) / BigInt(1e9)).toString() +
+            '.' +
+            (BigInt(req.payment.amount) % BigInt(1e9)).toString().padStart(9, '0')
+          : amount;
+
+        // Execute token purchase
+        const result = await tokenService.executeBuy(walletAddress, parseFloat(paymentAmountSOL));
+
+        res.json({
+          success: result.success,
+          data: {
+            tokenAmount: result.quote.tokenAmount,
+            solPaid: paymentAmountSOL,
+            pricePerToken: result.quote.pricePerToken,
+            priceImpact: result.quote.priceImpact,
+            transactionSignature: result.txSignature
+          },
+          payment: {
+            verified: req.payment?.verified,
+            amount: req.payment?.amount,
+            transactionSignature: req.payment?.transactionSignature,
+          }
+        });
+      } catch (error) {
+        console.error('Token buy error:', error);
+        res.status(500).json({
+          success: false,
+          error: error instanceof Error ? error.message : 'Token purchase failed'
+        });
+      }
+    });
+  }
 
   // ========================================================================
   // PROTECTED ROUTES WITH x402 PAYMENT
