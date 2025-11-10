@@ -15,11 +15,11 @@ RUN apt-get update -qq && \
     apt-get install -y python-is-python3 pkg-config build-essential
 
 # Copy package files
-COPY --link package.json package-lock.json ./
+COPY --link package.json bun.lock* ./
 
 # Install ALL dependencies (including devDependencies) for building
 # Don't set NODE_ENV=production here because we need devDependencies to compile
-RUN npm ci
+RUN npm install
 
 # Copy application code
 COPY --link . .

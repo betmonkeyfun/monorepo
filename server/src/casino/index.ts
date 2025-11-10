@@ -107,6 +107,9 @@ async function setupRoutes() {
     console.log('Token system enabled');
   } catch (error) {
     console.warn('Token system not initialized:', error instanceof Error ? error.message : 'Unknown error');
+    if (error instanceof Error && error.stack) {
+      console.warn('Stack trace:', error.stack);
+    }
     console.warn('Casino will run without token functionality');
   }
 
