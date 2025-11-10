@@ -34,7 +34,7 @@ export default function TokenPage() {
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState('');
 
-  const API_URL = process.env.NEXT_PUBLIC_API_URL || 'https://betmonkey-server.fly.dev';
+  const API_URL = process.env.NEXT_PUBLIC_CASINO_API_URL || 'https://betmonkey-server.fly.dev';
 
   // Load stats
   useEffect(() => {

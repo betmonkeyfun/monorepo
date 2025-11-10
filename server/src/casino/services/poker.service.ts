@@ -109,7 +109,15 @@ export class PokerService {
         ]
       );
 
+      // Unlock funds first (like roulette does)
       await this.walletService.unlockFunds(userId, betAmount);
+
+      // Then deduct the bet amount from balance
+      await this.walletService.deductBalanceInternal(
+        userId,
+        betAmount,
+        JSON.stringify({ gameId: game.id, type: 'poker_bet' })
+      );
 
       if (winner === 'player') {
         await this.walletService.addBalanceInternal(userId, winAmount, `Poker game ${game.id} winnings`);
@@ -213,8 +221,10 @@ export class PokerService {
         ]
       );
 
+      // Unlock funds first (like roulette does)
       await this.walletService.unlockFunds(userId, betAmount);
 
+      // Then deduct the bet amount from balance
       await this.walletService.deductBalanceInternal(
         userId,
         betAmount,
