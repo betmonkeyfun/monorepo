@@ -3,7 +3,6 @@
 A decentralized betting platform built on Solana blockchain with instant payment settlement using the x402 protocol.
 
 ## Overview
-
 BetMonkey leverages Solana's high-performance blockchain and the x402 payment protocol to enable instant, trustless betting with micropayments. The platform features:
 
 - **Instant Settlement**: On-chain payment finality using Solana
