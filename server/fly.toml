@@ -1,0 +1,39 @@
+# fly.toml app configuration file
+# See https://fly.io/docs/reference/configuration/
+
+app = 'betmonkey-server'
+primary_region = 'iad'
+
+[build]
+
+[env]
+  # Puerto que Fly.io espera (Casino escuchará en este puerto)
+  PORT = '8080'
+  NODE_ENV = 'production'
+
+[http_service]
+  internal_port = 8080
+  force_https = true
+  auto_stop_machines = 'stop'
+  auto_start_machines = true
+  min_machines_running = 0
+  processes = ['app']
+
+  # Health check
+  [[http_service.checks]]
+    grace_period = '10s'
+    interval = '30s'
+    method = 'GET'
+    path = '/health'
+    timeout = '5s'
+    type = 'http'
+
+[[vm]]
+  memory = '1gb'
+  cpu_kind = 'shared'
+  cpus = 1
+
+# Persistent storage for SQLite database
+[mounts]
+  source = 'betmonkey_data'
+  destination = '/data'

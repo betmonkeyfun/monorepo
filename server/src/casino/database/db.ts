@@ -14,7 +14,10 @@ const __dirname = path.dirname(__filename);
 // DATABASE CONNECTION
 // ============================================================================
 
-const DB_PATH = path.join(__dirname, '../../../data/casino.db');
+// Use environment variable or fallback to relative path for local development
+const DB_PATH = process.env.CASINO_DATABASE_PATH ||
+                process.env.DATABASE_PATH ||
+                path.join(__dirname, '../../../data/casino.db');
 
 export class Database {
   private db: sqlite3.Database;

@@ -111,6 +111,29 @@ async function setupRoutes() {
     });
   });
 
+  // Facilitator proxy - forward all /facilitator/* requests to internal facilitator service
+  app.use('/facilitator', async (req: Request, res: Response) => {
+    try {
+      const facilitatorUrl = `${FACILITATOR_URL}${req.url}`;
+      const response = await fetch(facilitatorUrl, {
+        method: req.method,
+        headers: req.headers as any,
+        body: req.method !== 'GET' && req.method !== 'HEAD' ? JSON.stringify(req.body) : undefined,
+      });
+
+      const data = await response.text();
+      res.status(response.status)
+        .set(Object.fromEntries(response.headers.entries()))
+        .send(data);
+    } catch (error) {
+      console.error('Facilitator proxy error:', error);
+      res.status(502).json({
+        success: false,
+        error: 'Failed to reach facilitator service',
+      });
+    }
+  });
+
   // Welcome endpoint
   app.get('/', (_req: Request, res: Response) => {
     res.json({
@@ -447,7 +470,7 @@ async function startServer() {
   try {
     await setupRoutes();
 
-    app.listen(PORT, () => {
+    app.listen(Number(PORT), '0.0.0.0', () => {
       console.log('');
       console.log('╔═══════════════════════════════════════════════════════╗');
       console.log('║                                                       ║');

@@ -31,7 +31,7 @@
     "pm2:delete": "pm2 delete ecosystem.config.cjs",
     "pm2:logs": "pm2 logs",
     "pm2:monit": "pm2 monit",
-    "start": "npm run pm2:start",
+    "start": "pm2-runtime start ecosystem.config.cjs",
     "stop": "npm run pm2:stop",
     "restart": "npm run pm2:restart",
     "logs": "pm2 logs",
