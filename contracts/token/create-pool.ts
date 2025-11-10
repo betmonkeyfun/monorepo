@@ -1,4 +1,5 @@
-import { PublicKey } from '@solana/web3.js';
+import { LAMPORTS_PER_SOL } from '@solana/web3.js';
+import { connection } from '../config/network';
 import { loadOrCreateWallet } from './wallet';
 import * as fs from 'fs';
 import * as path from 'path';
@@ -6,59 +7,70 @@ import * as path from 'path';
 const TOKEN_INFO_FILE = path.join(__dirname, '../.token-info.json');
 
 async function createPool() {
-  console.log('🏊 Creating Liquidity Pool...\n');
+  console.log('Creating Liquidity Pool...\n');
 
   // Load token info
   if (!fs.existsSync(TOKEN_INFO_FILE)) {
-    console.error('❌ Token not found. Run: npm run create-token');
+    console.error('Token not found. Run: npm run create-token');
     process.exit(1);
   }
 
   const tokenInfo = JSON.parse(fs.readFileSync(TOKEN_INFO_FILE, 'utf-8'));
   const wallet = loadOrCreateWallet();
 
-  console.log('📋 Token Information:');
-  console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+  // Check balance
+  const balance = await connection.getBalance(wallet.publicKey);
+  const balanceSOL = balance / LAMPORTS_PER_SOL;
+
+  console.log('Token Information:');
+  console.log('==========================================');
   console.log('Name:', tokenInfo.name);
   console.log('Symbol:', tokenInfo.symbol);
   console.log('Mint:', tokenInfo.mint);
-  console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n');
+  console.log('Wallet:', wallet.publicKey.toBase58());
+  console.log('Balance:', balanceSOL.toFixed(4), 'SOL');
+  console.log('==========================================\n');
 
-  console.log('ℹ️  Creating a liquidity pool on Raydium requires:');
-  console.log('   1. Token mint address (we have this ✅)');
-  console.log('   2. Initial liquidity in SOL and tokens');
-  console.log('   3. Market creation on OpenBook (Serum)');
-  console.log('   4. Pool creation transaction\n');
+  console.log('POOL CREATION OPTIONS:\n');
 
-  console.log('📝 Options for creating the pool:\n');
-  console.log('Option 1: Use Raydium UI (Recommended for devnet)');
-  console.log('   → Go to: https://raydium.io/');
-  console.log('   → Connect wallet');
-  console.log('   → Create pool with your token mint address\n');
+  console.log('For devnet, you have a few options:\n');
 
-  console.log('Option 2: Use Raydium SDK (Advanced)');
-  console.log('   → Requires OpenBook market creation');
-  console.log('   → Requires more complex setup');
-  console.log('   → Can be automated\n');
+  console.log('1. EASIEST: Skip the pool for now');
+  console.log('   - The AI agent is ready to use');
+  console.log('   - You can test it without a pool');
+  console.log('   - Just mock the casino profits');
+  console.log('   - When ready for mainnet, create a real pool\n');
 
-  console.log('Option 3: Use Jupiter (Easiest for simple swaps)');
-  console.log('   → Create a minimal pool');
-  console.log('   → Good for testing\n');
+  console.log('2. Use Raydium UI (if available on devnet)');
+  console.log('   - Go to https://raydium.io/liquidity/create/');
+  console.log('   - Connect wallet (must be on devnet)');
+  console.log('   - Import token:', tokenInfo.mint);
+  console.log('   - Add liquidity (suggest: 0.5 SOL + 500M BMONKEY)');
+  console.log('   - Note: Raydium may not support devnet\n');
 
-  console.log('🎯 For this project, we recommend:');
-  console.log('   1. For devnet testing: Use Raydium devnet UI');
-  console.log('   2. For mainnet: Use Raydium SDK or UI\n');
+  console.log('3. Use Orca UI (if available on devnet)');
+  console.log('   - Go to https://www.orca.so/');
+  console.log('   - Similar to Raydium\n');
 
-  console.log('💡 Pro tip: For the AI agent to work, you need:');
-  console.log('   - A liquidity pool with SOL/BMONKEY pair');
-  console.log('   - Enough liquidity to handle buys without huge slippage');
-  console.log('   - The pool address (will be generated when you create it)\n');
+  console.log('4. FOR MAINNET ONLY:');
+  console.log('   - Get real SOL');
+  console.log('   - Use Raydium or Orca UI');
+  console.log('   - Add significant liquidity (e.g., 10 SOL minimum)');
+  console.log('   - Monitor slippage and price impact\n');
 
-  console.log('📋 Save this information:');
-  console.log('Token Mint:', tokenInfo.mint);
-  console.log('Your Wallet:', wallet.publicKey.toBase58());
-  console.log('\n⚠️  Note: Creating pools programmatically on Raydium is complex.');
-  console.log('   The AI agent can still be built to work with any DEX pool!');
+  console.log('IMPORTANT NOTES:');
+  console.log('==========================================');
+  console.log('- Most DEXs dont fully support devnet pools');
+  console.log('- For testing, you can skip the pool');
+  console.log('- The AI agent code is ready to work with Jupiter');
+  console.log('- When you create a mainnet pool, no code changes needed');
+  console.log('==========================================\n');
+
+  console.log('NEXT STEPS:');
+  console.log('1. Test the AI agent logic: bun run start-agent');
+  console.log('2. When ready for mainnet: Change SOLANA_NETWORK=mainnet-beta in .env');
+  console.log('3. Get real SOL and create a real pool on Raydium/Orca');
+  console.log('4. The agent will automatically start buying!\n');
 }
 
 createPool();

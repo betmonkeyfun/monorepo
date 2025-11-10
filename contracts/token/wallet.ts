@@ -10,10 +10,14 @@ const WALLET_FILE = path.join(__dirname, '../.wallet.json');
 export function loadOrCreateWallet(): Keypair {
   // Try to load from private key in .env
   if (process.env.WALLET_PRIVATE_KEY) {
-    const decoded = Uint8Array.from(
-      JSON.parse(Buffer.from(process.env.WALLET_PRIVATE_KEY, 'base64').toString())
-    );
-    return Keypair.fromSecretKey(decoded);
+    try {
+      const decoded = Uint8Array.from(
+        JSON.parse(Buffer.from(process.env.WALLET_PRIVATE_KEY, 'base64').toString())
+      );
+      return Keypair.fromSecretKey(decoded);
+    } catch (error) {
+      console.error('Error loading wallet from .env, trying file...');
+    }
   }
 
   // Try to load from file
@@ -26,10 +30,10 @@ export function loadOrCreateWallet(): Keypair {
   const wallet = Keypair.generate();
   fs.writeFileSync(WALLET_FILE, JSON.stringify(Array.from(wallet.secretKey)));
 
-  console.log('🆕 New wallet created!');
-  console.log('📁 Saved to:', WALLET_FILE);
-  console.log('🔑 Public Key:', wallet.publicKey.toBase58());
-  console.log('⚠️  IMPORTANT: Backup your wallet file!');
+  console.log('New wallet created!');
+  console.log('Saved to:', WALLET_FILE);
+  console.log('Public Key:', wallet.publicKey.toBase58());
+  console.log('IMPORTANT: Backup your wallet file!');
 
   return wallet;
 }

@@ -25,5 +25,5 @@ export const AGENT_CONFIG = {
   dex: process.env.DEX || 'raydium',
 };
 
-console.log(`🌐 Network: ${NETWORK}`);
-console.log(`🔗 RPC: ${RPC_ENDPOINT}`);
+console.log(`Network: ${NETWORK}`);
+console.log(`RPC: ${RPC_ENDPOINT}`);
