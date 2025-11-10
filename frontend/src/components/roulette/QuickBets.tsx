@@ -7,12 +7,12 @@ interface QuickBetsProps {
 }
 
 const SIMPLE_BETS = [
-  { type: 'red', label: 'RED', color: 'bg-gradient-to-br from-red-600 to-red-700 hover:from-red-500 hover:to-red-600' },
-  { type: 'black', label: 'BLACK', color: 'bg-gradient-to-br from-gray-900 to-black hover:from-gray-800 hover:to-gray-900' },
-  { type: 'even', label: 'EVEN', color: 'bg-gradient-to-br from-blue-600 to-blue-700 hover:from-blue-500 hover:to-blue-600' },
-  { type: 'odd', label: 'ODD', color: 'bg-gradient-to-br from-purple-600 to-purple-700 hover:from-purple-500 hover:to-purple-600' },
-  { type: 'low', label: '1-18', color: 'bg-gradient-to-br from-indigo-600 to-indigo-700 hover:from-indigo-500 hover:to-indigo-600' },
-  { type: 'high', label: '19-36', color: 'bg-gradient-to-br from-pink-600 to-pink-700 hover:from-pink-500 hover:to-pink-600' },
+  { type: 'red', label: 'RED', color: 'from-red-600 to-red-500', borderColor: 'border-red-500', glow: 'hover:shadow-red-500/50' },
+  { type: 'black', label: 'BLACK', color: 'from-gray-800 to-gray-900', borderColor: 'border-gray-600', glow: 'hover:shadow-gray-500/50' },
+  { type: 'even', label: 'EVEN', color: 'from-blue-600 to-blue-500', borderColor: 'border-blue-500', glow: 'hover:shadow-blue-500/50' },
+  { type: 'odd', label: 'ODD', color: 'from-purple-600 to-purple-500', borderColor: 'border-purple-500', glow: 'hover:shadow-purple-500/50' },
+  { type: 'low', label: '1-18', color: 'from-indigo-600 to-indigo-500', borderColor: 'border-indigo-500', glow: 'hover:shadow-indigo-500/50' },
+  { type: 'high', label: '19-36', color: 'from-pink-600 to-pink-500', borderColor: 'border-pink-500', glow: 'hover:shadow-pink-500/50' },
 ];
 
 export default function QuickBets({ onPlaceBet, isSpinning, useBalance }: QuickBetsProps) {
@@ -22,25 +22,27 @@ export default function QuickBets({ onPlaceBet, isSpinning, useBalance }: QuickB
   };
 
   return (
-    <div className="w-full max-w-5xl mx-auto">
-      <div className="grid grid-cols-6 gap-2">
+    <div className="w-full max-w-6xl mx-auto">
+      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3">
         {SIMPLE_BETS.map((bet) => (
           <button
             key={bet.type}
             onClick={() => handleBet(bet.type)}
             disabled={isSpinning}
             className={`
-              ${bet.color}
-              ${isSpinning ? 'opacity-50 cursor-not-allowed' : 'transform hover:scale-105 active:scale-95'}
-              text-white font-bold py-3 px-2 rounded-lg
-              transition-all duration-150 shadow-md text-sm
-              border border-white/20 hover:border-white/40
+              group relative
+              bg-gradient-to-br ${bet.color}
+              ${isSpinning ? 'opacity-50 cursor-not-allowed' : 'transform hover:scale-105 active:scale-95 hover:shadow-2xl'}
+              text-white font-black py-4 px-4 rounded-xl
+              transition-all duration-200 shadow-lg
+              border-2 ${bet.borderColor} ${bet.glow}
               disabled:transform-none
-              relative overflow-hidden
+              overflow-hidden
             `}
           >
-            <div className="absolute inset-0 bg-gradient-to-t from-black/20 to-transparent" />
-            <div className="relative">{bet.label}</div>
+            <div className="absolute inset-0 bg-gradient-to-t from-black/30 to-transparent group-hover:from-black/10" />
+            <div className="absolute inset-0 bg-white/10 opacity-0 group-hover:opacity-100 transition-opacity duration-200" />
+            <div className="relative text-base tracking-wider">{bet.label}</div>
           </button>
         ))}
       </div>

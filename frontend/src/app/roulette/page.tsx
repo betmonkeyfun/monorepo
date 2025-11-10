@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import { useRouter } from 'next/navigation';
 import { useAppKitAccount, useAppKitProvider } from '@reown/appkit/react';
 import { PublicKey } from '@solana/web3.js';
 import dynamic from 'next/dynamic';
@@ -22,6 +23,7 @@ const RouletteWheel = dynamic(() => import('@/components/roulette/SimpleRoulette
 });
 
 export default function RoulettePage() {
+  const router = useRouter();
   const { address, isConnected } = useAppKitAccount();
   const { walletProvider } = useAppKitProvider('solana') as any;
 
@@ -304,46 +306,39 @@ export default function RoulettePage() {
   };
 
   return (
-    <main className="min-h-screen bg-gradient-to-br from-gray-950 via-gray-900 to-black text-white">
+    <main className="min-h-screen text-white relative">
+      {/* Background pattern */}
+      <div className="fixed inset-0 -z-10 h-full w-full bg-black bg-[linear-gradient(to_right,#4a0000_1px,transparent_1px),linear-gradient(to_bottom,#4a0000_1px,transparent_1px)] bg-[size:6rem_4rem]"></div>
+
       {/* Header */}
-      <header className="sticky top-0 z-50 border-b border-gray-800 bg-gray-900/90 backdrop-blur-md">
+      <header className="sticky top-0 z-50 border-b border-red-900/30 bg-black/80 backdrop-blur-md">
         <div className="container mx-auto px-4 py-4 flex items-center justify-between">
-          <div className="flex items-center space-x-3">
-            <div>
-              <h1 className="text-2xl font-bold bg-gradient-to-r from-yellow-400 to-yellow-200 bg-clip-text text-transparent">
-                BetMonkey Casino
-              </h1>
-              <p className="text-sm text-gray-400">Decentralized Roulette on Solana</p>
-            </div>
-          </div>
+          <button
+            onClick={() => router.push('/home')}
+            className="group flex items-center gap-3 bg-gradient-to-r from-red-600/10 to-yellow-600/10 hover:from-red-600/20 hover:to-yellow-600/20 border border-yellow-500/30 hover:border-yellow-500/50 rounded-lg px-5 py-2.5 transition-all"
+          >
+            <svg className="w-5 h-5 text-yellow-400 group-hover:-translate-x-1 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 19l-7-7m0 0l7-7m-7 7h18" />
+            </svg>
+            <span className="text-white font-bold text-base">All Games</span>
+          </button>
 
-          <div className="flex items-center space-x-4">
-            {isConnected && (
-              <div className="hidden md:flex items-center space-x-4">
-                {stats && (
-                  <div className="flex items-center space-x-4 text-sm">
-                    <div className="text-green-400">
-                      Wins: {stats.totalWins || 0}
-                    </div>
-                    <div className="text-red-400">
-                      Losses: {stats.totalLosses || 0}
-                    </div>
-                  </div>
-                )}
-
-                {/* Payment Source Selector */}
-                <div>
+          <div className="flex items-center gap-3">
+            {isConnected ? (
+              <>
+                <div className="hidden md:flex items-center gap-4">
+                  {/* Payment Source Selector */}
                   <select
                     value={useBalance ? 'balance' : 'wallet'}
                     onChange={(e) => setUseBalance(e.target.value === 'balance')}
                     disabled={parseFloat(balance) <= 0 && useBalance}
-                    className="bg-gray-800 border border-yellow-500/50 rounded-lg px-3 py-2 text-white text-sm font-bold cursor-pointer focus:border-yellow-500 focus:outline-none transition-all appearance-none"
+                    className="bg-black/40 border border-yellow-500/30 rounded-lg px-3 py-2 text-white text-sm font-medium cursor-pointer focus:border-yellow-500 focus:outline-none transition-all appearance-none hover:border-yellow-500/50"
                     style={{
                       backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 24 24' stroke='%23EAB308'%3E%3Cpath stroke-linecap='round' stroke-linejoin='round' stroke-width='2' d='M19 9l-7 7-7-7'%3E%3C/path%3E%3C/svg%3E")`,
                       backgroundRepeat: 'no-repeat',
                       backgroundPosition: 'right 0.5rem center',
-                      backgroundSize: '1.2em 1.2em',
-                      paddingRight: '2.5rem',
+                      backgroundSize: '1em 1em',
+                      paddingRight: '2rem',
                     }}
                   >
                     <option value="wallet" className="bg-gray-900">New Transaction</option>
@@ -351,74 +346,77 @@ export default function RoulettePage() {
                       Casino Balance {parseFloat(balance) <= 0 ? '(Empty)' : ''}
                     </option>
                   </select>
+
+                  <div className="flex items-center gap-2 text-yellow-400 font-bold text-sm">
+                    <span className="text-gray-400">Balance:</span>
+                    <span>{balance} SOL</span>
+                  </div>
                 </div>
 
-                <button
-                  onClick={() => setShowWithdrawModal(true)}
-                  className="bg-gradient-to-r from-yellow-600/20 to-yellow-500/20 border-2 border-yellow-500/50 rounded-xl px-4 py-2 hover:from-yellow-600/30 hover:to-yellow-500/30 hover:border-yellow-500/70 transition-all cursor-pointer"
-                >
-                  <div className="text-xs text-yellow-300 mb-0.5">Casino Balance</div>
-                  <div className="text-lg font-bold text-yellow-400">{balance} SOL</div>
-                </button>
-              </div>
-            )}
-
-            <appkit-button />
+                <appkit-button />
+              </>
+            ) : null}
           </div>
         </div>
       </header>
 
       {/* Main Content */}
-      <div className="container mx-auto px-4 py-3 space-y-3">
+      <div className="container mx-auto px-4 py-8 space-y-8">
         {!isConnected ? (
-          <div className="text-center py-20">
-            <h2 className="text-3xl font-bold mb-4">Welcome to BetMonkey Casino</h2>
-            <p className="text-gray-400 mb-8 max-w-2xl mx-auto">
-              Connect your Solana wallet to start playing decentralized roulette.
+          <div className="text-center py-32">
+            <h2 className="text-5xl md:text-7xl font-black mb-6 bg-gradient-to-r from-red-500 via-yellow-400 to-red-500 bg-clip-text text-transparent">
+              ROULETTE
+            </h2>
+            <p className="text-gray-300 text-xl mb-12 max-w-2xl mx-auto leading-relaxed">
+              Place your bets. Spin the wheel. Win big on the blockchain.
             </p>
             <button
               onClick={() => modal.open()}
-              className="bg-gradient-to-r from-yellow-600 to-yellow-500 hover:from-yellow-500 hover:to-yellow-400 text-white font-bold py-4 px-8 rounded-xl text-lg transition-all duration-200 transform hover:scale-105 shadow-xl"
+              className="group relative bg-gradient-to-r from-yellow-600 to-yellow-500 hover:from-yellow-500 hover:to-yellow-400 text-black font-bold py-5 px-12 rounded-xl text-xl transition-all duration-200 transform hover:scale-105 shadow-2xl"
             >
-              Connect Wallet
+              <span className="relative z-10">Connect Wallet</span>
+              <div className="absolute inset-0 bg-red-600/20 blur-xl scale-150 group-hover:scale-[1.7] transition-transform duration-500 rounded-xl"></div>
             </button>
           </div>
         ) : (
           <>
-            {/* Quick Bets - Above everything */}
+            {/* Quick Bets - Top */}
             <QuickBets
               onPlaceBet={handlePlaceBet}
               isSpinning={isSpinning}
               useBalance={useBalance}
             />
 
-            {/* Roulette Wheel - Compact */}
-            <div className="flex justify-center">
-              <div className="w-full max-w-3xl">
+            {/* Desktop Layout: Number Picker LEFT | Roulette Wheel RIGHT */}
+            <div className="flex flex-col lg:flex-row gap-8 items-start justify-center">
+              {/* Number Picker - LEFT on desktop */}
+              <div className="w-full lg:w-auto order-2 lg:order-1">
+                <NumberPicker
+                  onPlaceBet={handlePlaceMultiNumberBet}
+                  isSpinning={isSpinning}
+                  useBalance={useBalance}
+                />
+              </div>
+
+              {/* Roulette Wheel - RIGHT on desktop */}
+              <div className="w-full lg:flex-1 max-w-3xl mx-auto order-1 lg:order-2">
                 <RouletteWheel
                   isSpinning={isSpinning}
                   winningNumber={winningNumber}
                   onSpinComplete={handleSpinComplete}
                 />
 
-                {/* Winning Number Display - Compact */}
+                {/* Winning Number Display */}
                 {winningNumber !== null && !isSpinning && (
-                  <div className="mt-3 text-center">
-                    <div className="inline-block bg-gradient-to-r from-yellow-600 to-yellow-500 rounded-lg px-6 py-2 shadow-xl">
-                      <div className="text-xs text-yellow-100 font-medium">Winning Number</div>
-                      <div className="text-3xl font-bold text-white">{winningNumber}</div>
+                  <div className="mt-6 text-center">
+                    <div className="inline-block bg-gradient-to-r from-yellow-600 to-yellow-500 rounded-xl px-8 py-3 shadow-2xl border-2 border-yellow-400">
+                      <div className="text-xs text-yellow-100 font-bold uppercase tracking-widest mb-1">Result</div>
+                      <div className="text-5xl font-black text-white">{winningNumber}</div>
                     </div>
                   </div>
                 )}
               </div>
             </div>
-
-            {/* Number Picker - Compact */}
-            <NumberPicker
-              onPlaceBet={handlePlaceMultiNumberBet}
-              isSpinning={isSpinning}
-              useBalance={useBalance}
-            />
           </>
         )}
       </div>

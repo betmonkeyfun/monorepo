@@ -52,6 +52,10 @@ export default function Home() {
     router.push('/roulette');
   };
 
+  const handleHomeClick = () => {
+    router.push('/home');
+  };
+
   // Block scrolling until user clicks ENTER
   useEffect(() => {
     // Disable scrolling on mount
@@ -152,10 +156,10 @@ export default function Home() {
             Join the future of decentralized gaming. Start playing provably fair casino games on Solana today.
           </p>
           <button
-            onClick={handleRouletteClick}
+            onClick={handleHomeClick}
             className="bg-gradient-to-r from-yellow-600 to-yellow-500 hover:from-yellow-500 hover:to-yellow-400 text-white font-bold py-4 px-12 rounded-xl text-lg transition-all duration-200 transform hover:scale-105 shadow-xl"
           >
-            Start Playing Roulette
+            Play Now
           </button>
         </>
       ),
