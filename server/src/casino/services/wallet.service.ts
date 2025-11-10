@@ -5,14 +5,7 @@
 
 import { randomUUID } from 'crypto';
 import { Database } from '../database/db.js';
-import {
-  Wallet,
-  Transaction,
-  DepositDto,
-  WithdrawDto,
-  InsufficientFundsError,
-  CasinoError,
-} from '../types/index.js';
+import { Wallet, Transaction, DepositDto, WithdrawDto, InsufficientFundsError, CasinoError } from '../types/index.js';
 
 export class WalletService {
   constructor(private db: Database) {}
@@ -60,10 +53,11 @@ export class WalletService {
     };
 
     // Update wallet balance (no transaction wrapper - caller handles it)
-    await this.db.run(
-      'UPDATE wallets SET balance = ?, updated_at = ? WHERE user_id = ?',
-      [balanceAfter, transaction.createdAt, userId]
-    );
+    await this.db.run('UPDATE wallets SET balance = ?, updated_at = ? WHERE user_id = ?', [
+      balanceAfter,
+      transaction.createdAt,
+      userId,
+    ]);
 
     // Record transaction
     await this.db.run(
@@ -142,10 +136,11 @@ export class WalletService {
 
     await this.db.transaction(async () => {
       // Update wallet balance
-      await this.db.run(
-        'UPDATE wallets SET balance = ?, updated_at = ? WHERE user_id = ?',
-        [balanceAfter, transaction.createdAt, userId]
-      );
+      await this.db.run('UPDATE wallets SET balance = ?, updated_at = ? WHERE user_id = ?', [
+        balanceAfter,
+        transaction.createdAt,
+        userId,
+      ]);
 
       // Record transaction
       await this.db.run(
@@ -172,7 +167,9 @@ export class WalletService {
    * Send Solana withdrawal transaction
    */
   private async sendSolanaWithdrawal(destinationAddress: string, amountSOL: string): Promise<string> {
-    const { Connection, PublicKey, Keypair, SystemProgram, Transaction, sendAndConfirmTransaction } = await import('@solana/web3.js');
+    const { Connection, PublicKey, Keypair, SystemProgram, Transaction, sendAndConfirmTransaction } = await import(
+      '@solana/web3.js'
+    );
 
     // Get facilitator private key from environment
     const facilitatorPrivateKey = process.env.FACILITATOR_PRIVATE_KEY;
@@ -202,15 +199,10 @@ export class WalletService {
     );
 
     // Send and confirm transaction
-    const signature = await sendAndConfirmTransaction(
-      connection,
-      transaction,
-      [merchantKeypair],
-      {
-        commitment: 'confirmed',
-        maxRetries: 3,
-      }
-    );
+    const signature = await sendAndConfirmTransaction(connection, transaction, [merchantKeypair], {
+      commitment: 'confirmed',
+      maxRetries: 3,
+    });
 
     return signature;
   }
@@ -229,10 +221,11 @@ export class WalletService {
 
     const newLockedBalance = this.addAmounts(wallet.lockedBalance, amount);
 
-    await this.db.run(
-      'UPDATE wallets SET locked_balance = ?, updated_at = ? WHERE user_id = ?',
-      [newLockedBalance, Date.now(), userId]
-    );
+    await this.db.run('UPDATE wallets SET locked_balance = ?, updated_at = ? WHERE user_id = ?', [
+      newLockedBalance,
+      Date.now(),
+      userId,
+    ]);
   }
 
   /**
@@ -242,16 +235,18 @@ export class WalletService {
     const wallet = await this.getWallet(userId);
     const newLockedBalance = this.subtractAmounts(wallet.lockedBalance, amount);
 
-    await this.db.run(
-      'UPDATE wallets SET locked_balance = ?, updated_at = ? WHERE user_id = ?',
-      [newLockedBalance, Date.now(), userId]
-    );
+    await this.db.run('UPDATE wallets SET locked_balance = ?, updated_at = ? WHERE user_id = ?', [
+      newLockedBalance,
+      Date.now(),
+      userId,
+    ]);
   }
 
   /**
-   * Deduct balance (for losing bet)
+   * Internal method to deduct balance without transaction wrapper
+   * Use this when already inside a transaction
    */
-  async deductBalance(userId: string, amount: string, metadata?: string): Promise<Transaction> {
+  async deductBalanceInternal(userId: string, amount: string, metadata?: string): Promise<Transaction> {
     const wallet = await this.getWallet(userId);
     const balanceBefore = wallet.balance;
     const balanceAfter = this.subtractAmounts(balanceBefore, amount);
@@ -267,29 +262,38 @@ export class WalletService {
       createdAt: Date.now(),
     };
 
-    await this.db.transaction(async () => {
-      await this.db.run(
-        'UPDATE wallets SET balance = ?, updated_at = ? WHERE user_id = ?',
-        [balanceAfter, transaction.createdAt, userId]
-      );
+    await this.db.run('UPDATE wallets SET balance = ?, updated_at = ? WHERE user_id = ?', [
+      balanceAfter,
+      transaction.createdAt,
+      userId,
+    ]);
 
-      await this.db.run(
-        `INSERT INTO transactions (id, user_id, type, amount, balance_before, balance_after, metadata, created_at)
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
-        [
-          transaction.id,
-          transaction.userId,
-          transaction.type,
-          transaction.amount,
-          transaction.balanceBefore,
-          transaction.balanceAfter,
-          transaction.metadata,
-          transaction.createdAt,
-        ]
-      );
-    });
+    await this.db.run(
+      `INSERT INTO transactions (id, user_id, type, amount, balance_before, balance_after, metadata, created_at)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+      [
+        transaction.id,
+        transaction.userId,
+        transaction.type,
+        transaction.amount,
+        transaction.balanceBefore,
+        transaction.balanceAfter,
+        transaction.metadata,
+        transaction.createdAt,
+      ]
+    );
 
     return transaction;
+  }
+
+  async deductBalance(userId: string, amount: string, metadata?: string): Promise<Transaction> {
+    let transaction: Transaction | null = null;
+
+    await this.db.transaction(async () => {
+      transaction = await this.deductBalanceInternal(userId, amount, metadata);
+    });
+
+    return transaction!;
   }
 
   /**
@@ -312,10 +316,11 @@ export class WalletService {
       createdAt: Date.now(),
     };
 
-    await this.db.run(
-      'UPDATE wallets SET balance = ?, updated_at = ? WHERE user_id = ?',
-      [balanceAfter, transaction.createdAt, userId]
-    );
+    await this.db.run('UPDATE wallets SET balance = ?, updated_at = ? WHERE user_id = ?', [
+      balanceAfter,
+      transaction.createdAt,
+      userId,
+    ]);
 
     await this.db.run(
       `INSERT INTO transactions (id, user_id, type, amount, balance_before, balance_after, metadata, created_at)

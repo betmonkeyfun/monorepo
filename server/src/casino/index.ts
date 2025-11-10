@@ -11,7 +11,9 @@ import { initializeDatabase, getDatabase } from './database/db.js';
 import { UserService } from './services/user.service.js';
 import { WalletService } from './services/wallet.service.js';
 import { RouletteService } from './services/roulette.service.js';
+import { PokerService } from './services/poker.service.js';
 import { createRouletteRoutes } from './routes/roulette.routes.js';
+import { createPokerRoutes } from './routes/poker.routes.js';
 import { createWalletRoutes } from './routes/wallet.routes.js';
 import { createX402MiddlewareWithUtils } from '../lib/x402-middleware.js';
 import { CasinoError } from './types/index.js';
@@ -27,8 +29,8 @@ const SOLANA_NETWORK = process.env.SOLANA_NETWORK || 'devnet';
 
 // Bet amounts in SOL
 const BET_AMOUNTS = {
-  QUICK_BET: '0.001',     // 0.001 SOL for quick bets
-  CUSTOM_BET: '0.01',     // 0.01 SOL minimum for custom bets
+  QUICK_BET: '0.001', // 0.001 SOL for quick bets
+  CUSTOM_BET: '0.01', // 0.01 SOL minimum for custom bets
   TRANSACTION_FEE: '0.0001', // Fee for withdrawals
 };
 
@@ -85,8 +87,9 @@ async function initializeServices() {
   const userService = new UserService(db);
   const walletService = new WalletService(db);
   const rouletteService = new RouletteService(db, walletService);
+  const pokerService = new PokerService(db, walletService);
 
-  return { db, userService, walletService, rouletteService };
+  return { db, userService, walletService, rouletteService, pokerService };
 }
 
 // ============================================================================
@@ -94,7 +97,7 @@ async function initializeServices() {
 // ============================================================================
 
 async function setupRoutes() {
-  const { userService, walletService, rouletteService } = await initializeServices();
+  const { userService, walletService, rouletteService, pokerService } = await initializeServices();
 
   // Health check
   app.get('/health', (_req: Request, res: Response) => {
@@ -115,17 +118,27 @@ async function setupRoutes() {
       data: {
         name: 'BetMonkey Casino',
         version: '1.0.0',
-        game: 'European Roulette',
-        description: 'Play roulette with Solana payments via x402 protocol',
+        games: ['European Roulette', "Texas Hold'em Poker"],
+        description: 'Play casino games with Solana payments via x402 protocol',
         endpoints: {
-          info: 'GET /roulette/info - Get game information',
-          play: 'POST /roulette/play - Play roulette (requires x402 payment)',
-          quickBet: 'POST /roulette/quick-bet - Quick bet (red/black/even/odd)',
-          history: 'GET /roulette/history/:walletAddress - Get game history',
-          stats: 'GET /roulette/stats/:walletAddress - Get player statistics',
-          balance: 'GET /wallet/balance/:walletAddress - Check balance',
-          withdraw: 'POST /wallet/withdraw - Withdraw winnings',
-          transactions: 'GET /wallet/transactions/:walletAddress - Transaction history',
+          roulette: {
+            info: 'GET /roulette/info - Get game information',
+            play: 'POST /roulette/play - Play roulette (requires x402 payment)',
+            quickBet: 'POST /roulette/quick-bet - Quick bet (red/black/even/odd)',
+            history: 'GET /roulette/history/:walletAddress - Get game history',
+            stats: 'GET /roulette/stats/:walletAddress - Get player statistics',
+          },
+          poker: {
+            info: 'GET /poker/info - Get poker payouts and rules',
+            play: 'POST /poker/play - Play poker (requires x402 payment)',
+            history: 'GET /poker/history/:walletAddress - Get game history',
+            stats: 'GET /poker/stats/:walletAddress - Get player statistics',
+          },
+          wallet: {
+            balance: 'GET /wallet/balance/:walletAddress - Check balance',
+            withdraw: 'POST /wallet/withdraw - Withdraw winnings',
+            transactions: 'GET /wallet/transactions/:walletAddress - Transaction history',
+          },
         },
       },
     });
@@ -136,6 +149,7 @@ async function setupRoutes() {
   // ========================================================================
 
   app.use('/roulette', createRouletteRoutes(rouletteService, userService));
+  app.use('/poker', createPokerRoutes(pokerService, userService));
   app.use('/wallet', createWalletRoutes(walletService, userService));
 
   // ========================================================================
@@ -229,7 +243,115 @@ async function setupRoutes() {
     }
   });
 
-  // Custom bet endpoint - requires higher payment for multiple bets
+  // Poker endpoint - requires payment
+  const pokerMiddleware = createX402MiddlewareWithUtils(
+    {
+      amount: BET_AMOUNTS.CUSTOM_BET, // 0.01 SOL for poker
+      payTo: MERCHANT_ADDRESS,
+      asset: 'SOL',
+      network: `solana-${SOLANA_NETWORK}`,
+    },
+    {
+      facilitatorUrl: FACILITATOR_URL,
+      timeout: 30000,
+      retryAttempts: 3,
+    }
+  );
+
+  app.post('/play/poker', pokerMiddleware.middleware, async (req: Request, res: Response) => {
+    try {
+      const { amount } = req.body;
+
+      if (!amount) {
+        res.status(400).json({
+          success: false,
+          error: 'Bet amount is required',
+        });
+        return;
+      }
+
+      const walletAddress = req.payment?.clientPublicKey || 'anonymous';
+      let user;
+      try {
+        user = await userService.getUserByWallet(walletAddress);
+      } catch {
+        user = await userService.createUser({
+          walletAddress,
+          username: `player_${walletAddress.slice(0, 8)}`,
+        });
+      }
+
+      const paymentAmountSOL = req.payment?.amount
+        ? (BigInt(req.payment.amount) / BigInt(1e9)).toString() +
+          '.' +
+          (BigInt(req.payment.amount) % BigInt(1e9)).toString().padStart(9, '0')
+        : amount;
+
+      const betDto = { amount };
+
+      const game = await pokerService.depositAndPlay(
+        user.id,
+        betDto,
+        paymentAmountSOL,
+        req.payment?.transactionSignature || 'internal'
+      );
+
+      const won = game.winner === 'player';
+      const tied = game.winner === 'tie';
+
+      let message = '';
+      if (tied) {
+        message = `It's a tie! You get your bet back.`;
+      } else if (won) {
+        if (!game.dealerQualified) {
+          message = `Dealer doesn't qualify (needs Pair+). You win ante only: +${game.winAmount} SOL`;
+        } else {
+          message = `Congratulations! You won with ${game.playerHand.name}! +${game.winAmount} SOL`;
+        }
+      } else {
+        message = `You lost. Dealer had ${game.dealerHand.name}.`;
+      }
+
+      res.json({
+        success: true,
+        data: {
+          gameId: game.id,
+          playerHole: game.playerHole.map((c) => `${c.rank}${c.suit[0].toUpperCase()}`),
+          dealerHole: game.dealerHole.map((c) => `${c.rank}${c.suit[0].toUpperCase()}`),
+          community: game.community.map((c) => `${c.rank}${c.suit[0].toUpperCase()}`),
+          playerHand: {
+            name: game.playerHand.name,
+            cards: game.playerHand.cards.map((c) => `${c.rank}${c.suit[0].toUpperCase()}`).join(' '),
+          },
+          dealerHand: {
+            name: game.dealerHand.name,
+            cards: game.dealerHand.cards.map((c) => `${c.rank}${c.suit[0].toUpperCase()}`).join(' '),
+          },
+          winner: game.winner,
+          won,
+          tied,
+          dealerQualified: game.dealerQualified,
+          payoutType: game.payoutType,
+          betAmount: game.betAmount,
+          winAmount: game.winAmount,
+          profit: game.profit,
+          message,
+          payment: {
+            verified: req.payment?.verified,
+            amount: req.payment?.amount,
+            transactionSignature: req.payment?.transactionSignature,
+          },
+        },
+      });
+    } catch (error) {
+      console.error('Poker play error:', error);
+      res.status(500).json({
+        success: false,
+        error: error instanceof Error ? error.message : 'Game failed',
+      });
+    }
+  });
+
   const customBetMiddleware = createX402MiddlewareWithUtils(
     {
       amount: BET_AMOUNTS.CUSTOM_BET,
@@ -330,7 +452,7 @@ async function startServer() {
       console.log('╔═══════════════════════════════════════════════════════╗');
       console.log('║                                                       ║');
       console.log('║            🎰 BETMONKEY CASINO 🎰                     ║');
-      console.log('║         European Roulette with x402                   ║');
+      console.log('║      Roulette & Poker with x402 Payments             ║');
       console.log('║                                                       ║');
       console.log('╚═══════════════════════════════════════════════════════╝');
       console.log('');
@@ -342,14 +464,24 @@ async function startServer() {
       console.log('Available endpoints:');
       console.log('  GET  / - API information');
       console.log('  GET  /health - Health check');
-      console.log('  GET  /roulette/info - Game information');
-      console.log('  POST /play/quick - Quick bet (requires x402 payment)');
-      console.log('  POST /play/custom - Custom bet (requires x402 payment)');
-      console.log('  GET  /roulette/history/:wallet - Game history');
-      console.log('  GET  /roulette/stats/:wallet - Player statistics');
-      console.log('  GET  /wallet/balance/:wallet - Check balance');
-      console.log('  POST /wallet/withdraw - Withdraw winnings');
-      console.log('  GET  /wallet/transactions/:wallet - Transaction history');
+      console.log('');
+      console.log('  Roulette:');
+      console.log('    GET  /roulette/info - Game information');
+      console.log('    POST /play/quick - Quick bet (requires x402 payment)');
+      console.log('    POST /play/custom - Custom bet (requires x402 payment)');
+      console.log('    GET  /roulette/history/:wallet - Game history');
+      console.log('    GET  /roulette/stats/:wallet - Player statistics');
+      console.log('');
+      console.log('  Poker:');
+      console.log('    GET  /poker/info - Poker payouts and rules');
+      console.log("    POST /play/poker - Play Texas Hold'em (requires x402 payment)");
+      console.log('    GET  /poker/history/:wallet - Game history');
+      console.log('    GET  /poker/stats/:wallet - Player statistics');
+      console.log('');
+      console.log('  Wallet:');
+      console.log('    GET  /wallet/balance/:wallet - Check balance');
+      console.log('    POST /wallet/withdraw - Withdraw winnings');
+      console.log('    GET  /wallet/transactions/:wallet - Transaction history');
       console.log('');
     });
   } catch (error) {

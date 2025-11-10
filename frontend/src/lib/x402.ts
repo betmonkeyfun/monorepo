@@ -4,8 +4,12 @@ import { CASINO_API_URL } from './solana';
 
 // Helper to get numbers for bet type
 function getBetNumbers(betType: string): number[] {
-  const RED_NUMBERS = [1, 3, 5, 7, 9, 12, 14, 16, 18, 19, 21, 23, 25, 27, 30, 32, 34, 36];
-  const BLACK_NUMBERS = [2, 4, 6, 8, 10, 11, 13, 15, 17, 20, 22, 24, 26, 28, 29, 31, 33, 35];
+  const RED_NUMBERS = [
+    1, 3, 5, 7, 9, 12, 14, 16, 18, 19, 21, 23, 25, 27, 30, 32, 34, 36,
+  ];
+  const BLACK_NUMBERS = [
+    2, 4, 6, 8, 10, 11, 13, 15, 17, 20, 22, 24, 26, 28, 29, 31, 33, 35,
+  ];
 
   switch (betType) {
     case 'red':
@@ -60,7 +64,9 @@ export interface StructuredData {
 function generateNonce(): string {
   const array = new Uint8Array(32);
   crypto.getRandomValues(array);
-  return Array.from(array, byte => byte.toString(16).padStart(2, '0')).join('');
+  return Array.from(array, (byte) => byte.toString(16).padStart(2, '0')).join(
+    ''
+  );
 }
 
 // Create structured data for signing
@@ -126,13 +132,16 @@ export async function createPaymentRequest(
   const authSignature = await signMessage(messageBytes);
 
   // 4. Create Solana transfer transaction locally
-  const { Connection, Transaction, SystemProgram } = await import('@solana/web3.js');
+  const { Connection, Transaction, SystemProgram } = await import(
+    '@solana/web3.js'
+  );
 
   // Connect to Solana network
   const network = process.env.NEXT_PUBLIC_NETWORK || 'solana-devnet';
-  const rpcUrl = network === 'solana-devnet'
-    ? 'https://api.devnet.solana.com'
-    : 'https://api.mainnet-beta.solana.com';
+  const rpcUrl =
+    network === 'solana-devnet'
+      ? 'https://api.devnet.solana.com'
+      : 'https://api.mainnet-beta.solana.com';
   const connection = new Connection(rpcUrl, 'confirmed');
 
   // Get facilitator public key (who pays the transaction fees)
@@ -168,7 +177,9 @@ export async function createPaymentRequest(
     requireAllSignatures: false,
     verifySignatures: true,
   });
-  const signedTransactionBase64 = Buffer.from(serializedTransaction).toString('base64');
+  const signedTransactionBase64 = Buffer.from(serializedTransaction).toString(
+    'base64'
+  );
 
   // 6. Return payment request
   return {
@@ -225,7 +236,9 @@ export async function placeCustomBet(
 
 // Get player stats
 export async function getPlayerStats(walletAddress: string): Promise<any> {
-  const response = await fetch(`${CASINO_API_URL}/roulette/stats/${walletAddress}`);
+  const response = await fetch(
+    `${CASINO_API_URL}/roulette/stats/${walletAddress}`
+  );
 
   if (!response.ok) {
     return null; // Return null if user doesn't exist yet
@@ -238,7 +251,9 @@ export async function getPlayerStats(walletAddress: string): Promise<any> {
 // Get wallet balance (casino balance, not blockchain balance)
 export async function getWalletBalance(walletAddress: string): Promise<any> {
   try {
-    const response = await fetch(`${CASINO_API_URL}/wallet/balance/${walletAddress}`);
+    const response = await fetch(
+      `${CASINO_API_URL}/wallet/balance/${walletAddress}`
+    );
 
     if (!response.ok) {
       return { balance: '0.000' };
@@ -247,7 +262,7 @@ export async function getWalletBalance(walletAddress: string): Promise<any> {
     const result = await response.json();
     // Backend returns: { success, data: { balance, availableBalance, ... } }
     return {
-      balance: parseFloat(result.data?.availableBalance || '0').toFixed(3)
+      balance: parseFloat(result.data?.availableBalance || '0').toFixed(3),
     };
   } catch (error) {
     console.error('Error fetching balance:', error);
@@ -286,17 +301,20 @@ export async function placeBetWithBalance(
 ): Promise<any> {
   const numbers = getBetNumbers(betType);
 
-  const response = await fetch(`${CASINO_API_URL}/roulette/quick-bet-with-balance`, {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-    },
-    body: JSON.stringify({
-      walletAddress,
-      type: betType,
-      numbers, // Include numbers for the bet type
-    }),
-  });
+  const response = await fetch(
+    `${CASINO_API_URL}/roulette/quick-bet-with-balance`,
+    {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        walletAddress,
+        type: betType,
+        numbers, // Include numbers for the bet type
+      }),
+    }
+  );
 
   if (!response.ok) {
     const error = await response.json();
@@ -325,6 +343,118 @@ export async function placeCustomBetWithBalance(
   if (!response.ok) {
     const error = await response.json();
     throw new Error(error.error || 'Failed to place bet');
+  }
+
+  return response.json();
+}
+
+// Deposit to casino balance
+export async function depositToBalance(
+  paymentRequest: PaymentRequest,
+  amount: string
+): Promise<any> {
+  const response = await fetch(`${CASINO_API_URL}/wallet/deposit`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'X-Payment': JSON.stringify(paymentRequest),
+    },
+    body: JSON.stringify({ amount }),
+  });
+
+  if (!response.ok) {
+    const error = await response.json();
+    throw new Error(error.error || 'Failed to deposit');
+  }
+
+  return response.json();
+}
+
+// ========================================================================
+// POKER API FUNCTIONS
+// ========================================================================
+
+// Play poker (Texas Hold'em)
+export async function playPoker(
+  paymentRequest: PaymentRequest,
+  amount: string
+): Promise<any> {
+  const response = await fetch(`${CASINO_API_URL}/play/poker`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'X-Payment': JSON.stringify(paymentRequest),
+    },
+    body: JSON.stringify({ amount }),
+  });
+
+  if (!response.ok) {
+    const error = await response.json();
+    throw new Error(error.error || 'Failed to play poker');
+  }
+
+  return response.json();
+}
+
+// Play poker using casino balance (no payment signature required)
+export async function playPokerWithBalance(
+  walletAddress: string,
+  amount: string
+): Promise<any> {
+  const response = await fetch(`${CASINO_API_URL}/poker/play-with-balance`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({
+      walletAddress,
+      amount,
+    }),
+  });
+
+  if (!response.ok) {
+    const error = await response.json();
+    throw new Error(error.error || 'Failed to play poker');
+  }
+
+  return response.json();
+}
+
+// Get poker stats
+export async function getPokerStats(walletAddress: string): Promise<any> {
+  const response = await fetch(
+    `${CASINO_API_URL}/poker/stats/${walletAddress}`
+  );
+
+  if (!response.ok) {
+    throw new Error('Failed to fetch poker stats');
+  }
+
+  return response.json();
+}
+
+// Get poker game history
+export async function getPokerHistory(
+  walletAddress: string,
+  limit = 10
+): Promise<any> {
+  const response = await fetch(
+    `${CASINO_API_URL}/poker/history/${walletAddress}?limit=${limit}`
+  );
+
+  if (!response.ok) {
+    throw new Error('Failed to fetch poker history');
+  }
+
+  return response.json();
+}
+
+// Get poker info (payouts, rules)
+export async function getPokerInfo(): Promise<any> {
+  const response = await fetch(`${CASINO_API_URL}/poker/info`);
+
+  if (!response.ok) {
+    throw new Error('Failed to fetch poker info');
   }
 
   return response.json();

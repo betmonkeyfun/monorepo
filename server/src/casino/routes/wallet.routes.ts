@@ -8,10 +8,7 @@ import { WalletService } from '../services/wallet.service.js';
 import { UserService } from '../services/user.service.js';
 import { WithdrawDto, WithdrawSchema } from '../types/index.js';
 
-export function createWalletRoutes(
-  walletService: WalletService,
-  userService: UserService
-): Router {
+export function createWalletRoutes(walletService: WalletService, userService: UserService): Router {
   const router = Router();
 
   /**
@@ -43,6 +40,80 @@ export function createWalletRoutes(
       res.status(404).json({
         success: false,
         error: error instanceof Error ? error.message : 'Wallet not found',
+      });
+    }
+  });
+
+  router.post('/deposit', async (req: Request, res: Response) => {
+    try {
+      const { amount } = req.body;
+
+      if (!amount) {
+        res.status(400).json({
+          success: false,
+          error: 'amount is required',
+        });
+        return;
+      }
+
+      const walletAddress = req.payment?.recipient;
+
+      if (!walletAddress) {
+        res.status(400).json({
+          success: false,
+          error: 'Payment information required',
+        });
+        return;
+      }
+
+      let user;
+      try {
+        user = await userService.getUserByWallet(walletAddress);
+      } catch {
+        user = await userService.createUser({
+          walletAddress,
+          username: `player_${walletAddress.slice(0, 8)}`,
+        });
+      }
+
+      const transaction = await walletService.creditWalletInternal(
+        user.id,
+        amount,
+        req.payment?.transactionSignature || ''
+      );
+
+      const wallet = await walletService.getWallet(user.id);
+
+      res.json({
+        success: true,
+        data: {
+          message: 'Deposit successful',
+          transaction: {
+            id: transaction.id,
+            amount: transaction.amount,
+            balanceBefore: transaction.balanceBefore,
+            balanceAfter: transaction.balanceAfter,
+            transactionSignature: transaction.transactionSignature,
+            createdAt: transaction.createdAt,
+          },
+          wallet: {
+            balance: wallet.balance,
+            lockedBalance: wallet.lockedBalance,
+            availableBalance: (parseFloat(wallet.balance) - parseFloat(wallet.lockedBalance)).toFixed(9),
+          },
+          payment: {
+            verified: req.payment?.verified,
+            amount: req.payment?.amount,
+            transactionSignature: req.payment?.transactionSignature,
+          },
+        },
+      });
+    } catch (error) {
+      console.error('Deposit error:', error);
+
+      res.status(400).json({
+        success: false,
+        error: error instanceof Error ? error.message : 'Deposit failed',
       });
     }
   });
