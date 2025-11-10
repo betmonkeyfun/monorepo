@@ -195,7 +195,7 @@ export default function PitchPage() {
                         fill="transparent"
                         stroke="#FCD34D"
                         strokeWidth="80"
-                        strokeDasharray="251.2 0"
+                        strokeDasharray="100.53 150.8"
                         strokeDashoffset="0"
                       />
                       {/* Treasury/Buybacks (30%) - Red */}
@@ -206,8 +206,8 @@ export default function PitchPage() {
                         fill="transparent"
                         stroke="#EF4444"
                         strokeWidth="80"
-                        strokeDasharray="188.4 62.8"
-                        strokeDashoffset="-100.48"
+                        strokeDasharray="75.4 175.93"
+                        strokeDashoffset="-100.53"
                       />
                       {/* Team (15%) - Blue */}
                       <circle
@@ -217,8 +217,8 @@ export default function PitchPage() {
                         fill="transparent"
                         stroke="#3B82F6"
                         strokeWidth="80"
-                        strokeDasharray="94.2 157"
-                        strokeDashoffset="-163.12"
+                        strokeDasharray="37.7 213.63"
+                        strokeDashoffset="-175.93"
                       />
                       {/* Liquidity (15%) - Green */}
                       <circle
@@ -228,8 +228,8 @@ export default function PitchPage() {
                         fill="transparent"
                         stroke="#10B981"
                         strokeWidth="80"
-                        strokeDasharray="94.2 157"
-                        strokeDashoffset="-257.32"
+                        strokeDasharray="37.7 213.63"
+                        strokeDashoffset="-213.63"
                       />
                     </svg>
                   </div>
@@ -319,10 +319,10 @@ export default function PitchPage() {
                   Roadmap
                 </h2>
                 <div className="grid md:grid-cols-2 gap-6">
-                  {/* Q1 2025 */}
+                  {/* Q1 2026 */}
                   <div className="flex gap-4 items-start">
                     <div className="bg-green-500 text-black font-bold px-3 py-1.5 rounded-lg text-sm whitespace-nowrap h-fit">
-                      Q1 2025
+                      Q1 2026
                     </div>
                     <div className="flex-1">
                       <h3 className="text-xl font-bold text-green-400 mb-2">Launch Phase</h3>
@@ -335,10 +335,10 @@ export default function PitchPage() {
                     </div>
                   </div>
 
-                  {/* Q2 2025 */}
+                  {/* Q2 2026 */}
                   <div className="flex gap-4 items-start">
                     <div className="bg-blue-500 text-white font-bold px-3 py-1.5 rounded-lg text-sm whitespace-nowrap h-fit">
-                      Q2 2025
+                      Q2 2026
                     </div>
                     <div className="flex-1">
                       <h3 className="text-xl font-bold text-blue-400 mb-2">Expansion Phase</h3>
@@ -351,10 +351,10 @@ export default function PitchPage() {
                     </div>
                   </div>
 
-                  {/* Q3 2025 */}
+                  {/* Q3 2026 */}
                   <div className="flex gap-4 items-start">
                     <div className="bg-purple-500 text-white font-bold px-3 py-1.5 rounded-lg text-sm whitespace-nowrap h-fit">
-                      Q3 2025
+                      Q3 2026
                     </div>
                     <div className="flex-1">
                       <h3 className="text-xl font-bold text-purple-400 mb-2">Scale Phase</h3>
@@ -367,10 +367,10 @@ export default function PitchPage() {
                     </div>
                   </div>
 
-                  {/* Q4 2025 */}
+                  {/* Q4 2026 */}
                   <div className="flex gap-4 items-start">
                     <div className="bg-yellow-500 text-black font-bold px-3 py-1.5 rounded-lg text-sm whitespace-nowrap h-fit">
-                      Q4 2025
+                      Q4 2026
                     </div>
                     <div className="flex-1">
                       <h3 className="text-xl font-bold text-yellow-400 mb-2">Ecosystem Phase</h3>

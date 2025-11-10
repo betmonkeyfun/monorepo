@@ -10,10 +10,9 @@ BetMonkey leverages Solana's high-performance blockchain and the x402 payment pr
 - **Sponsored Transactions**: Facilitator pays gas fees for seamless UX
 - **Replay Protection**: Cryptographic nonce system prevents duplicate payments
 - **Decentralized**: No custodial wallets, users maintain control of funds
-- **Low Fees**: Leverages Solana's low transaction costs
+- **Low Fees**: Leverages Solana's low transaction costs 
 
 ## Architecture
-
 ```
 ┌─────────────────┐         ┌──────────────────┐         ┌─────────────────┐
 │   Web Frontend  │  HTTP   │  Payment Server  │  HTTP   │   Facilitator   │
