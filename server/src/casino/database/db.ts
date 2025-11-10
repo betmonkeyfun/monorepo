@@ -131,6 +131,38 @@ export class Database {
       ON bets(user_id, created_at DESC)
     `);
 
+    await this.run(`
+      CREATE TABLE IF NOT EXISTS poker_games (
+        id TEXT PRIMARY KEY,
+        user_id TEXT NOT NULL,
+        game_type TEXT NOT NULL,
+        player_hole TEXT NOT NULL,
+        dealer_hole TEXT NOT NULL,
+        community TEXT NOT NULL,
+        player_hand_rank INTEGER NOT NULL,
+        player_hand_name TEXT NOT NULL,
+        player_hand_cards TEXT NOT NULL,
+        dealer_hand_rank INTEGER NOT NULL,
+        dealer_hand_name TEXT NOT NULL,
+        dealer_hand_cards TEXT NOT NULL,
+        bet_amount TEXT NOT NULL,
+        win_amount TEXT NOT NULL,
+        profit TEXT NOT NULL,
+        winner TEXT NOT NULL,
+        dealer_qualified INTEGER NOT NULL DEFAULT 0,
+        payout_type TEXT NOT NULL DEFAULT 'loss',
+        status TEXT NOT NULL DEFAULT 'pending',
+        created_at INTEGER NOT NULL,
+        completed_at INTEGER,
+        FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+      )
+    `);
+
+    await this.run(`
+      CREATE INDEX IF NOT EXISTS idx_poker_games_user
+      ON poker_games(user_id, created_at DESC)
+    `);
+
     // ========================================================================
     // NONCES TABLE - x402 Payment Protocol (Anti-replay protection)
     // ========================================================================

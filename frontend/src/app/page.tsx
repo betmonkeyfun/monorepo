@@ -52,8 +52,9 @@ export default function Home() {
     router.push('/roulette');
   };
 
-  const handleHomeClick = () => {
-    router.push('/home');
+
+  const handlePokerClick = () => {
+    router.push('/poker');
   };
 
   // Block scrolling until user clicks ENTER
@@ -102,7 +103,7 @@ export default function Home() {
           <h3 className="text-2xl font-bold text-yellow-400 mb-4">Decentralized Gaming on Solana</h3>
           <p className="mb-4 text-gray-300">
             BetMonkey Casino brings you the thrill of classic casino games, powered entirely by blockchain technology.
-            Play roulette, blackjack, and slots with complete transparency and fairness, all on the Solana network.
+            Play roulette, poker, and more with complete transparency and fairness, all on the Solana network.
           </p>
           <p className="text-gray-300">
             Every bet, every spin, every win is recorded on-chain, ensuring a provably fair gaming experience
@@ -155,12 +156,21 @@ export default function Home() {
           <p className="text-gray-300 mb-8 max-w-md">
             Join the future of decentralized gaming. Start playing provably fair casino games on Solana today.
           </p>
-          <button
-            onClick={handleHomeClick}
-            className="bg-gradient-to-r from-yellow-600 to-yellow-500 hover:from-yellow-500 hover:to-yellow-400 text-white font-bold py-4 px-12 rounded-xl text-lg transition-all duration-200 transform hover:scale-105 shadow-xl"
-          >
-            Play Now
-          </button>
+          <div className="flex gap-4">
+            <button
+              onClick={handleRouletteClick}
+              className="bg-gradient-to-r from-yellow-600 to-yellow-500 hover:from-yellow-500 hover:to-yellow-400 text-white font-bold py-4 px-12 rounded-xl text-lg transition-all duration-200 transform hover:scale-105 shadow-xl"
+            >
+              Play Roulette
+            </button>
+            <button
+              onClick={handlePokerClick}
+              className="bg-gradient-to-r from-purple-600 to-purple-500 hover:from-purple-500 hover:to-purple-400 text-white font-bold py-4 px-12 rounded-xl text-lg transition-all duration-200 transform hover:scale-105 shadow-xl"
+            >
+              Play Poker
+            </button>
+          </div>
+
         </>
       ),
     },
@@ -294,6 +304,78 @@ export default function Home() {
               </div>
             </div>
 
+            {/* Poker Card */}
+            <div className="group relative" style={{ perspective: '2000px', transformStyle: 'preserve-3d' }}>
+              {/* Glow behind card */}
+              <div className="absolute inset-0 bg-gradient-to-br from-purple-500/30 via-pink-500/20 to-fuchsia-500/30 blur-3xl scale-110 opacity-50 group-hover:opacity-70 transition-opacity duration-300" style={{ transform: 'translateZ(-50px)' }} />
+
+              <div
+                className="card-gradient-purple relative transition-all duration-500 hover:-translate-y-8 hover:scale-110 cursor-pointer group-hover:shadow-2xl"
+                style={{
+                  borderRadius: '20px',
+                  padding: '3px',
+                  boxShadow: `
+                    6px 6px 0 rgba(204, 0, 255, 0.8),
+                    8px 8px 0 rgba(204, 0, 255, 0.7),
+                    10px 10px 0 rgba(153, 0, 255, 0.6),
+                    12px 12px 0 rgba(153, 0, 255, 0.5),
+                    14px 14px 0 rgba(204, 0, 255, 0.4),
+                    16px 16px 0 rgba(255, 0, 255, 0.4),
+                    18px 18px 0 rgba(255, 0, 255, 0.3),
+                    20px 20px 0 rgba(200, 0, 200, 0.3),
+                    22px 22px 0 rgba(150, 0, 150, 0.2),
+                    24px 24px 0 rgba(120, 0, 120, 0.2),
+                    26px 26px 0 rgba(100, 0, 100, 0.2),
+                    28px 28px 0 rgba(80, 0, 80, 0.1),
+                    30px 30px 0 rgba(60, 0, 60, 0.1),
+                    -6px 6px 0 rgba(204, 0, 255, 0.8),
+                    -8px 8px 0 rgba(204, 0, 255, 0.7),
+                    -10px 10px 0 rgba(153, 0, 255, 0.6),
+                    -12px 12px 0 rgba(153, 0, 255, 0.5),
+                    -14px 14px 0 rgba(204, 0, 255, 0.4),
+                    -16px 16px 0 rgba(255, 0, 255, 0.4),
+                    -18px 18px 0 rgba(255, 0, 255, 0.3),
+                    -20px 20px 0 rgba(200, 0, 200, 0.3),
+                    -22px 22px 0 rgba(150, 0, 150, 0.2),
+                    -24px 24px 0 rgba(120, 0, 120, 0.2),
+                    -26px 26px 0 rgba(100, 0, 100, 0.2),
+                    -28px 28px 0 rgba(80, 0, 80, 0.1),
+                    -30px 30px 0 rgba(60, 0, 60, 0.1),
+                    0 40px 80px rgba(0, 0, 0, 0.9)
+                  `,
+                  transform: 'translateZ(60px)',
+                  transformStyle: 'preserve-3d'
+                }}
+              >
+                <div
+                  className="flex flex-col overflow-hidden"
+                  style={{
+                    minHeight: '600px',
+                    borderRadius: '18px',
+                    background: 'linear-gradient(135deg, #1a001a 0%, #2d002d 50%, #1a001a 100%)'
+                  }}
+                >
+                {/* Content */}
+                <div className="p-8 flex flex-col flex-1 justify-center">
+                  <h3 className="text-3xl font-bold text-purple-400 mb-3 tracking-wider">
+                    POKER
+                  </h3>
+                  <p className="text-gray-300 text-sm leading-relaxed mb-6 flex-1">
+                    Texas Hold'em against the dealer. Get the best 5-card hand from your hole cards and community cards. Royal flush pays 50:1!
+                  </p>
+
+                  {/* Play Button */}
+                  <button
+                    onClick={handlePokerClick}
+                    className="w-full py-3 bg-gradient-to-r from-purple-600 via-pink-600 to-purple-600 hover:from-purple-500 hover:via-pink-500 hover:to-purple-500 text-white font-bold text-lg tracking-wider transition-all duration-300 rounded-lg"
+                  >
+                    PLAY NOW
+                  </button>
+                </div>
+                </div>
+              </div>
+            </div>
+
             {/* Blackjack Card */}
             <div className="group relative" style={{ perspective: '2000px', transformStyle: 'preserve-3d' }}>
               {/* Glow behind card */}
@@ -352,78 +434,6 @@ export default function Home() {
                   </h3>
                   <p className="text-gray-300 text-sm leading-relaxed mb-6 flex-1">
                     Beat the dealer to 21. Strategy meets luck in this timeless card game classic. Coming soon!
-                  </p>
-
-                  {/* Play Button */}
-                  <button
-                    disabled
-                    className="w-full py-3 bg-gray-700 text-gray-400 font-bold text-lg tracking-wider cursor-not-allowed rounded-lg"
-                  >
-                    COMING SOON
-                  </button>
-                </div>
-                </div>
-              </div>
-            </div>
-
-            {/* Slots Card */}
-            <div className="group relative" style={{ perspective: '2000px', transformStyle: 'preserve-3d' }}>
-              {/* Glow behind card */}
-              <div className="absolute inset-0 bg-gradient-to-br from-purple-500/30 via-pink-500/20 to-fuchsia-500/30 blur-3xl scale-110 opacity-50 group-hover:opacity-70 transition-opacity duration-300" style={{ transform: 'translateZ(-50px)' }} />
-
-              <div
-                className="card-gradient-purple relative transition-all duration-500 hover:-translate-y-8 hover:scale-110 cursor-pointer group-hover:shadow-2xl"
-                style={{
-                  borderRadius: '20px',
-                  padding: '3px',
-                  boxShadow: `
-                    6px 6px 0 rgba(204, 0, 255, 0.8),
-                    8px 8px 0 rgba(204, 0, 255, 0.7),
-                    10px 10px 0 rgba(153, 0, 255, 0.6),
-                    12px 12px 0 rgba(153, 0, 255, 0.5),
-                    14px 14px 0 rgba(204, 0, 255, 0.4),
-                    16px 16px 0 rgba(255, 0, 255, 0.4),
-                    18px 18px 0 rgba(255, 0, 255, 0.3),
-                    20px 20px 0 rgba(200, 0, 200, 0.3),
-                    22px 22px 0 rgba(150, 0, 150, 0.2),
-                    24px 24px 0 rgba(120, 0, 120, 0.2),
-                    26px 26px 0 rgba(100, 0, 100, 0.2),
-                    28px 28px 0 rgba(80, 0, 80, 0.1),
-                    30px 30px 0 rgba(60, 0, 60, 0.1),
-                    -6px 6px 0 rgba(204, 0, 255, 0.8),
-                    -8px 8px 0 rgba(204, 0, 255, 0.7),
-                    -10px 10px 0 rgba(153, 0, 255, 0.6),
-                    -12px 12px 0 rgba(153, 0, 255, 0.5),
-                    -14px 14px 0 rgba(204, 0, 255, 0.4),
-                    -16px 16px 0 rgba(255, 0, 255, 0.4),
-                    -18px 18px 0 rgba(255, 0, 255, 0.3),
-                    -20px 20px 0 rgba(200, 0, 200, 0.3),
-                    -22px 22px 0 rgba(150, 0, 150, 0.2),
-                    -24px 24px 0 rgba(120, 0, 120, 0.2),
-                    -26px 26px 0 rgba(100, 0, 100, 0.2),
-                    -28px 28px 0 rgba(80, 0, 80, 0.1),
-                    -30px 30px 0 rgba(60, 0, 60, 0.1),
-                    0 40px 80px rgba(0, 0, 0, 0.9)
-                  `,
-                  transform: 'translateZ(60px)',
-                  transformStyle: 'preserve-3d'
-                }}
-              >
-                <div
-                  className="flex flex-col overflow-hidden"
-                  style={{
-                    minHeight: '600px',
-                    borderRadius: '18px',
-                    background: 'linear-gradient(135deg, #1a001a 0%, #2d002d 50%, #1a001a 100%)'
-                  }}
-                >
-                {/* Content */}
-                <div className="p-8 flex flex-col flex-1 justify-center">
-                  <h3 className="text-3xl font-bold text-purple-400 mb-3 tracking-wider">
-                    SLOTS
-                  </h3>
-                  <p className="text-gray-300 text-sm leading-relaxed mb-6 flex-1">
-                    Spin to win big! Match symbols and hit the jackpot with every spin. Coming soon!
                   </p>
 
                   {/* Play Button */}
