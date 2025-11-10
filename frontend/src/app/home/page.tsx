@@ -33,6 +33,10 @@ export default function HomePage() {
     router.push('/roulette');
   };
 
+  const handlePokerClick = () => {
+    router.push('/poker');
+  };
+
   return (
     <main className="min-h-screen relative">
       {/* Background pattern */}
@@ -151,25 +155,29 @@ export default function HomePage() {
                 </div>
               </div>
 
-              {/* Blackjack Card */}
+              {/* Poker Card */}
               <div className="group relative" style={{ perspective: '2000px', transformStyle: 'preserve-3d' }}>
                 {/* Glow behind card */}
                 <div className="absolute inset-0 bg-gradient-to-br from-blue-500/30 via-cyan-500/20 to-teal-500/30 blur-3xl scale-110 opacity-50 group-hover:opacity-70 transition-opacity duration-300" style={{ transform: 'translateZ(-50px)' }} />
 
                 <div
-                  className="card-gradient-blue relative transition-all duration-500 hover:-translate-y-8 hover:scale-110 cursor-pointer group-hover:shadow-2xl opacity-60"
+                  className="card-gradient-blue relative transition-all duration-500 hover:-translate-y-8 hover:scale-110 cursor-pointer group-hover:shadow-2xl"
                   style={{
                     borderRadius: '20px',
                     padding: '3px',
                     boxShadow: `
-                      6px 6px 0 rgba(0, 153, 255, 0.5),
-                      8px 8px 0 rgba(0, 153, 255, 0.4),
-                      10px 10px 0 rgba(51, 102, 255, 0.3),
+                      6px 6px 0 rgba(0, 153, 255, 0.8),
+                      8px 8px 0 rgba(0, 153, 255, 0.7),
+                      10px 10px 0 rgba(0, 204, 255, 0.6),
+                      12px 12px 0 rgba(0, 204, 255, 0.5),
+                      14px 14px 0 rgba(0, 153, 255, 0.4),
+                      16px 16px 0 rgba(0, 102, 204, 0.4),
+                      18px 18px 0 rgba(0, 102, 204, 0.3),
+                      20px 20px 0 rgba(0, 51, 153, 0.3),
                       0 40px 80px rgba(0, 0, 0, 0.9)
                     `,
                     transform: 'translateZ(60px)',
-                    transformStyle: 'preserve-3d',
-                    pointerEvents: 'none'
+                    transformStyle: 'preserve-3d'
                   }}
                 >
                   <div
@@ -183,7 +191,7 @@ export default function HomePage() {
                     {/* Content */}
                     <div className="p-8 flex flex-col flex-1 justify-center">
                       <h3 className="text-4xl font-bold text-blue-400 mb-4 tracking-wider">
-                        BLACKJACK
+                        POKER
                       </h3>
                       <p className="text-gray-300 text-base leading-relaxed mb-8 flex-1">
                         Beat the dealer to 21. Strategy meets luck in this timeless card game classic. Coming soon!
@@ -191,10 +199,10 @@ export default function HomePage() {
 
                       {/* Play Button */}
                       <button
-                        disabled
-                        className="w-full py-4 bg-gray-700 text-gray-400 font-bold text-xl tracking-wider cursor-not-allowed rounded-lg"
+                        onClick={handlePokerClick}
+                        className="w-full py-4 bg-gradient-to-r from-blue-600 via-cyan-600 to-blue-600 hover:from-blue-500 hover:via-cyan-500 hover:to-blue-500 text-white font-bold text-xl tracking-wider transition-all duration-300 rounded-lg"
                       >
-                        COMING SOON
+                        PLAY BRO
                       </button>
                     </div>
                   </div>

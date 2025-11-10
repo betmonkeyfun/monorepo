@@ -1,9 +1,9 @@
 'use client';
 
 import { useState, useEffect, useRef } from 'react';
+import { useRouter } from 'next/navigation';
 import { useAppKitAccount, useAppKitProvider } from '@reown/appkit/react';
 import { PublicKey } from '@solana/web3.js';
-import Link from 'next/link';
 import { modal } from '@/contexts/WalletContext';
 import {
   getWalletBalance,
@@ -12,8 +12,6 @@ import {
 } from '@/lib/x402';
 import PlayingCard from '@/components/poker/PlayingCard';
 import WithdrawModal from '@/components/casino/WithdrawModal';
-import WaifuCelebration from '@/components/casino/WaifuCelebration';
-import SoundToggle from '@/components/casino/SoundToggle';
 import { motion, AnimatePresence } from 'framer-motion';
 import { casinoSounds } from '@/lib/casinoSounds';
 
@@ -36,6 +34,7 @@ interface PokerResult {
 }
 
 export default function PokerPage() {
+  const router = useRouter();
   const { address, isConnected } = useAppKitAccount();
   const { walletProvider } = useAppKitProvider('solana') as any;
 
@@ -46,7 +45,6 @@ export default function PokerPage() {
   const [betAmount, setBetAmount] = useState('0.01');
   const [showWithdrawModal, setShowWithdrawModal] = useState(false);
   const [useBalance, setUseBalance] = useState(false);
-  const [showWaifuCelebration, setShowWaifuCelebration] = useState(false);
 
   // Card reveal states for sequential animation
   const [revealedPlayerCards, setRevealedPlayerCards] = useState<number>(0);
@@ -127,29 +125,23 @@ export default function PokerPage() {
                   ? `PUSH! Both have ${gameResult.playerHand.name}`
                   : `Dealer wins with ${gameResult.dealerHand.name}`
               );
+              // Play win/loss sound
+              if (gameResult.won && parseFloat(gameResult.profit) > 0) {
+                casinoSounds.playBigWin();
+              } else if (!gameResult.tied) {
+                casinoSounds.playLoss();
+              }
             }, 800);
           }
         }, 4000 + i * 800)
       );
     }
 
-    // Step 4: Show waifu celebration after all cards
-    const celebrationTimer = setTimeout(() => {
-      if (gameResult.won && parseFloat(gameResult.profit) > 0) {
-        casinoSounds.playBigWin();
-        setShowWaifuCelebration(true);
-      } else if (!gameResult.tied) {
-        casinoSounds.playLoss();
-        setShowWaifuCelebration(true);
-      }
-    }, 8500);
-
     return () => {
       [
         ...playerTimers,
         ...dealerTimers,
         ...communityTimers,
-        celebrationTimer,
       ].forEach(clearTimeout);
     };
   }, [gameResult]);
@@ -184,7 +176,6 @@ export default function PokerPage() {
 
     setIsPlaying(true);
     setGameResult(null);
-    setShowWaifuCelebration(false);
 
     // Scroll to poker table with smooth animation (top of table at top of viewport)
     if (pokerTableRef.current) {
@@ -307,95 +298,62 @@ export default function PokerPage() {
   };
 
   return (
-    <main className="min-h-screen bg-gradient-to-br from-gray-950 via-purple-950 to-gray-950 text-white">
+    <main className="min-h-screen text-white relative">
+      {/* Background pattern */}
+      <div className="fixed inset-0 -z-10 h-full w-full bg-black bg-[linear-gradient(to_right,#4a0000_1px,transparent_1px),linear-gradient(to_bottom,#4a0000_1px,transparent_1px)] bg-[size:6rem_4rem]"></div>
+
       {/* Header */}
-      <header className="sticky top-0 z-50 border-b border-purple-800/30 bg-gray-900/90 backdrop-blur-md">
+      <header className="sticky top-0 z-50 border-b border-red-900/30 bg-black/80 backdrop-blur-md">
         <div className="container mx-auto px-4 py-4 flex items-center justify-between">
-          <div className="flex items-center space-x-3">
-            <Link
-              href="/"
-              className="text-purple-400 hover:text-purple-300 transition-colors"
-            >
-              ← Back
-            </Link>
-            <div className="ml-4">
-              <h1 className="text-2xl font-bold bg-gradient-to-r from-purple-400 to-pink-400 bg-clip-text text-transparent">
-                BetMonkey Casino
-              </h1>
-              <p className="text-sm text-gray-400">
-                Texas Hold'em Poker on Solana
-              </p>
-            </div>
-          </div>
+          <button
+            onClick={() => router.push('/home')}
+            className="group flex items-center gap-3 bg-gradient-to-r from-red-600/10 to-yellow-600/10 hover:from-red-600/20 hover:to-yellow-600/20 border border-yellow-500/30 hover:border-yellow-500/50 rounded-lg px-5 py-2.5 transition-all"
+          >
+            <svg className="w-5 h-5 text-yellow-400 group-hover:-translate-x-1 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 19l-7-7m0 0l7-7m-7 7h18" />
+            </svg>
+            <span className="text-white font-bold text-base">All Games</span>
+          </button>
 
-          <div className="flex items-center space-x-4">
-            {isConnected && (
-              <div className="hidden md:flex items-center space-x-4">
-                {stats && (
-                  <div className="flex items-center space-x-4 text-sm">
-                    <div className="text-green-400">
-                      Wins: {stats.totalWins || 0}
-                    </div>
-                    <div className="text-red-400">
-                      Losses: {stats.totalLosses || 0}
-                    </div>
-                  </div>
-                )}
-
-                {/* Sound Toggle */}
-                <SoundToggle />
-
-                {/* Payment Source Selector */}
-                <div>
+          <div className="flex items-center gap-3">
+            {isConnected ? (
+              <>
+                <div className="hidden md:flex items-center gap-4">
+                  {/* Payment Source Selector */}
                   <select
                     value={useBalance ? 'balance' : 'wallet'}
-                    onChange={(e) =>
-                      setUseBalance(e.target.value === 'balance')
-                    }
+                    onChange={(e) => setUseBalance(e.target.value === 'balance')}
                     disabled={parseFloat(balance) <= 0 && useBalance}
-                    className="bg-gray-800 border border-purple-500/50 rounded-lg px-3 py-2 text-white text-sm font-bold cursor-pointer focus:border-purple-500 focus:outline-none transition-all appearance-none"
+                    className="bg-black/40 border border-yellow-500/30 rounded-lg px-3 py-2 text-white text-sm font-medium cursor-pointer focus:border-yellow-500 focus:outline-none transition-all appearance-none hover:border-yellow-500/50"
                     style={{
-                      backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 24 24' stroke='%23A855F7'%3E%3Cpath stroke-linecap='round' stroke-linejoin='round' stroke-width='2' d='M19 9l-7 7-7-7'%3E%3C/path%3E%3C/svg%3E")`,
+                      backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 24 24' stroke='%23EAB308'%3E%3Cpath stroke-linecap='round' stroke-linejoin='round' stroke-width='2' d='M19 9l-7 7-7-7'%3E%3C/path%3E%3C/svg%3E")`,
                       backgroundRepeat: 'no-repeat',
                       backgroundPosition: 'right 0.5rem center',
-                      backgroundSize: '1.2em 1.2em',
-                      paddingRight: '2.5rem',
+                      backgroundSize: '1em 1em',
+                      paddingRight: '2rem',
                     }}
                   >
-                    <option value="wallet" className="bg-gray-900">
-                      New Transaction
-                    </option>
-                    <option
-                      value="balance"
-                      className="bg-gray-900"
-                      disabled={parseFloat(balance) <= 0}
-                    >
+                    <option value="wallet" className="bg-gray-900">New Transaction</option>
+                    <option value="balance" className="bg-gray-900" disabled={parseFloat(balance) <= 0}>
                       Casino Balance {parseFloat(balance) <= 0 ? '(Empty)' : ''}
                     </option>
                   </select>
+
+                  <div className="flex items-center gap-2 text-yellow-400 font-bold text-sm">
+                    <span className="text-gray-400">Balance:</span>
+                    <span>{balance} SOL</span>
+                  </div>
                 </div>
 
-                <button
-                  onClick={() => setShowWithdrawModal(true)}
-                  className="bg-gradient-to-r from-purple-600/20 to-pink-500/20 border-2 border-purple-500/50 rounded-xl px-4 py-2 hover:from-purple-600/30 hover:to-pink-500/30 hover:border-purple-500/70 transition-all cursor-pointer"
-                >
-                  <div className="text-xs text-purple-300 mb-0.5">
-                    Casino Balance
-                  </div>
-                  <div className="text-lg font-bold text-purple-400">
-                    {balance} SOL
-                  </div>
-                </button>
-              </div>
-            )}
-
-            <appkit-button />
+                <appkit-button />
+              </>
+            ) : null}
           </div>
         </div>
       </header>
 
       {/* Main Content */}
-      <div className="container mx-auto px-4 py-8">
+      <div className="container mx-auto px-4 py-2">
         {!isConnected ? (
           <div className="text-center py-20">
             <motion.div
@@ -424,7 +382,7 @@ export default function PokerPage() {
               <motion.div
                 initial={{ opacity: 0, scale: 0.95 }}
                 animate={{ opacity: 1, scale: 1 }}
-                className="bg-gradient-to-br from-green-900 to-green-800 rounded-3xl shadow-2xl p-8 border-8 border-yellow-700 relative overflow-hidden"
+                className="bg-gradient-to-br from-green-900 to-green-800 rounded-xl shadow-2xl p-2 border-2 border-yellow-700 relative overflow-hidden"
               >
                 {/* Felt texture overlay */}
                 <div
@@ -438,9 +396,9 @@ export default function PokerPage() {
 
                 <div className="relative z-10">
                   {/* Dealer Section */}
-                  <div className="mb-8">
+                  <div className="mb-2">
                     {/* Dealer Avatar and Name */}
-                    <div className="flex items-center justify-center mb-6">
+                    <div className="flex items-center justify-center mb-1">
                       <motion.div
                         initial={{ scale: 0, opacity: 0 }}
                         animate={{ scale: 1, opacity: 1 }}
@@ -448,7 +406,7 @@ export default function PokerPage() {
                         className="flex flex-col items-center"
                       >
                         <div className="relative">
-                          <div className="w-24 h-24 rounded-full border-4 border-yellow-500 overflow-hidden shadow-2xl bg-gray-800">
+                          <div className="w-12 h-12 rounded-full border-2 border-yellow-500 overflow-hidden shadow-lg bg-gray-800">
                             <img
                               src="/dealer.jpg"
                               alt="Dealer"
@@ -464,17 +422,17 @@ export default function PokerPage() {
                               }}
                             />
                           </div>
-                          <div className="absolute -bottom-2 left-1/2 transform -translate-x-1/2 bg-yellow-500 text-gray-900 px-3 py-1 rounded-full text-xs font-bold shadow-lg">
+                          <div className="absolute -bottom-1 left-1/2 transform -translate-x-1/2 bg-yellow-500 text-gray-900 px-2 py-0.5 rounded-full text-xs font-bold shadow-lg">
                             DEALER
                           </div>
                         </div>
                       </motion.div>
                     </div>
 
-                    <h3 className="text-white text-xl mb-4 text-center font-bold flex items-center justify-center">
+                    <h3 className="text-white text-sm mb-1 text-center font-bold flex items-center justify-center">
                       Dealer's Hand
                     </h3>
-                    <div className="flex justify-center gap-3">
+                    <div className="flex justify-center gap-1">
                       <AnimatePresence>
                         {gameResult ? (
                           gameResult.dealerHole.map(
@@ -509,13 +467,13 @@ export default function PokerPage() {
                         initial={{ opacity: 0, y: -10 }}
                         animate={{ opacity: 1, y: 0 }}
                         transition={{ delay: 0.3 }}
-                        className="text-center text-white mt-4"
+                        className="text-center text-white mt-1"
                       >
-                        <p className="text-lg font-semibold">
+                        <p className="text-sm font-semibold">
                           {gameResult.dealerHand.name}
                         </p>
                         <p
-                          className={`text-sm ${
+                          className={`text-xs ${
                             gameResult.dealerQualified
                               ? 'text-green-300'
                               : 'text-red-300'
@@ -530,11 +488,11 @@ export default function PokerPage() {
                   </div>
 
                   {/* Community Cards */}
-                  <div className="mb-8">
-                    <h3 className="text-white text-xl mb-4 text-center font-bold flex items-center justify-center">
+                  <div className="mb-2">
+                    <h3 className="text-white text-sm mb-1 text-center font-bold flex items-center justify-center">
                       Community Cards
                     </h3>
-                    <div className="flex justify-center gap-3">
+                    <div className="flex justify-center gap-1">
                       <AnimatePresence>
                         {gameResult
                           ? gameResult.community.map(
@@ -581,10 +539,10 @@ export default function PokerPage() {
                       <motion.div
                         initial={{ opacity: 0, scale: 0.9 }}
                         animate={{ opacity: 1, scale: 1 }}
-                        className="text-center mt-6"
+                        className="text-center mt-1"
                       >
-                        <div className="inline-block bg-yellow-500/20 border-2 border-yellow-500 rounded-xl px-6 py-3">
-                          <p className="text-yellow-300 text-xl font-bold">
+                        <div className="inline-block bg-yellow-500/20 border border-yellow-500 rounded-lg px-3 py-1">
+                          <p className="text-yellow-300 text-sm font-bold">
                             {currentStatus}
                           </p>
                         </div>
@@ -594,10 +552,10 @@ export default function PokerPage() {
 
                   {/* Player's Hand */}
                   <div>
-                    <h3 className="text-white text-xl mb-4 text-center font-bold flex items-center justify-center">
+                    <h3 className="text-white text-sm mb-1 text-center font-bold flex items-center justify-center">
                       Your Hand
                     </h3>
-                    <div className="flex justify-center gap-3">
+                    <div className="flex justify-center gap-1">
                       <AnimatePresence>
                         {gameResult ? (
                           gameResult.playerHole.map(
@@ -651,7 +609,7 @@ export default function PokerPage() {
                     animate={{ scale: 1, rotateZ: 0 }}
                     exit={{ scale: 0, rotateZ: 10 }}
                     transition={{ type: 'spring', duration: 0.6, delay: 0.8 }}
-                    className={`mt-6 p-6 rounded-2xl text-center shadow-2xl ${
+                    className={`mt-3 p-4 rounded-xl text-center shadow-xl ${
                       gameResult.won
                         ? 'bg-gradient-to-r from-green-600 to-green-500'
                         : gameResult.tied
@@ -663,7 +621,7 @@ export default function PokerPage() {
                       initial={{ scale: 0 }}
                       animate={{ scale: 1 }}
                       transition={{ delay: 1.0, type: 'spring' }}
-                      className="text-4xl font-bold text-white mb-2"
+                      className="text-2xl font-bold text-white mb-1"
                     >
                       {gameResult.won
                         ? 'YOU WON!'
@@ -671,7 +629,7 @@ export default function PokerPage() {
                         ? 'PUSH!'
                         : 'YOU LOST'}
                     </motion.h2>
-                    <p className="text-xl text-white/90 mb-4">
+                    <p className="text-base text-white/90 mb-2">
                       {gameResult.message}
                     </p>
                     <div className="flex justify-center gap-6 text-white">
@@ -706,9 +664,9 @@ export default function PokerPage() {
               </AnimatePresence>
 
               {/* Betting Controls */}
-              <div className="mt-6 bg-gray-900/50 backdrop-blur-sm rounded-2xl p-6 border border-purple-500/30">
+              <div className="mt-3 bg-black/60 backdrop-blur-sm rounded-xl p-4 border border-yellow-500/20">
                 <div className="max-w-md mx-auto">
-                  <label className="block text-white text-lg mb-3 font-semibold">
+                  <label className="block text-white text-sm mb-2 font-semibold">
                     Bet Amount (SOL)
                   </label>
                   <input
@@ -718,7 +676,7 @@ export default function PokerPage() {
                     step="0.001"
                     min="0.001"
                     disabled={isPlaying}
-                    className="w-full px-6 py-4 text-2xl rounded-lg bg-gray-800 text-white border-2 border-purple-500/50 focus:border-purple-400 outline-none transition-all disabled:opacity-50"
+                    className="w-full px-4 py-3 text-lg rounded-lg bg-gray-800 text-white border border-yellow-500/30 focus:border-yellow-500 outline-none transition-all disabled:opacity-50"
                   />
 
                   <button
@@ -726,7 +684,7 @@ export default function PokerPage() {
                     disabled={
                       isPlaying || !isConnected || parseFloat(betAmount) <= 0
                     }
-                    className="w-full mt-4 px-8 py-5 text-2xl font-bold bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-500 hover:to-pink-500 text-white rounded-xl transition-all disabled:opacity-50 disabled:cursor-not-allowed shadow-xl hover:shadow-2xl transform hover:scale-[1.02]"
+                    className="w-full mt-3 px-6 py-3 text-lg font-bold bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-500 hover:to-pink-500 text-white rounded-xl transition-all disabled:opacity-50 disabled:cursor-not-allowed shadow-lg hover:shadow-xl transform hover:scale-[1.02]"
                   >
                     {isPlaying ? 'Dealing Cards...' : 'Deal Hand'}
                   </button>
@@ -736,7 +694,7 @@ export default function PokerPage() {
                       onClick={() => {
                         setGameResult(null);
                       }}
-                      className="w-full mt-3 px-6 py-3 text-lg font-semibold bg-gray-700 hover:bg-gray-600 text-white rounded-xl transition-all"
+                      className="w-full mt-2 px-4 py-2 text-sm font-semibold bg-gray-700 hover:bg-gray-600 text-white rounded-lg transition-all"
                     >
                       Clear Table
                     </button>
@@ -749,56 +707,55 @@ export default function PokerPage() {
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ delay: 0.3 }}
-                className="mt-6 bg-gray-900/50 backdrop-blur-sm rounded-2xl p-6 border border-purple-500/30"
+                className="mt-3 bg-black/60 backdrop-blur-sm rounded-xl p-4 border border-yellow-500/20"
               >
-                <h3 className="text-xl font-bold text-center mb-4 text-purple-300">
+                <h3 className="text-base font-bold text-center mb-3 text-yellow-300">
                   💰 Payout Table
                 </h3>
-                <div className="grid grid-cols-2 md:grid-cols-5 gap-3 text-sm">
-                  <div className="bg-purple-900/30 rounded-lg p-3 text-center">
-                    <p className="font-bold text-yellow-400">Royal Flush</p>
-                    <p className="text-2xl font-bold text-white">50:1</p>
+                <div className="grid grid-cols-2 md:grid-cols-5 gap-2 text-xs">
+                  <div className="bg-purple-900/30 rounded-lg p-2 text-center">
+                    <p className="font-bold text-yellow-400 text-xs">Royal Flush</p>
+                    <p className="text-xl font-bold text-white">50:1</p>
                   </div>
-                  <div className="bg-purple-900/30 rounded-lg p-3 text-center">
-                    <p className="font-bold text-yellow-400">Straight Flush</p>
-                    <p className="text-2xl font-bold text-white">20:1</p>
+                  <div className="bg-purple-900/30 rounded-lg p-2 text-center">
+                    <p className="font-bold text-yellow-400 text-xs">Straight Flush</p>
+                    <p className="text-xl font-bold text-white">20:1</p>
                   </div>
-                  <div className="bg-purple-900/30 rounded-lg p-3 text-center">
-                    <p className="font-bold text-yellow-400">Four of a Kind</p>
-                    <p className="text-2xl font-bold text-white">10:1</p>
+                  <div className="bg-purple-900/30 rounded-lg p-2 text-center">
+                    <p className="font-bold text-yellow-400 text-xs">Four of a Kind</p>
+                    <p className="text-xl font-bold text-white">10:1</p>
                   </div>
-                  <div className="bg-purple-900/30 rounded-lg p-3 text-center">
-                    <p className="font-bold text-yellow-400">Full House</p>
-                    <p className="text-2xl font-bold text-white">5:1</p>
+                  <div className="bg-purple-900/30 rounded-lg p-2 text-center">
+                    <p className="font-bold text-yellow-400 text-xs">Full House</p>
+                    <p className="text-xl font-bold text-white">5:1</p>
                   </div>
-                  <div className="bg-purple-900/30 rounded-lg p-3 text-center">
-                    <p className="font-bold text-yellow-400">Flush</p>
-                    <p className="text-2xl font-bold text-white">4:1</p>
+                  <div className="bg-purple-900/30 rounded-lg p-2 text-center">
+                    <p className="font-bold text-yellow-400 text-xs">Flush</p>
+                    <p className="text-xl font-bold text-white">4:1</p>
                   </div>
-                  <div className="bg-purple-900/30 rounded-lg p-3 text-center">
-                    <p className="font-bold text-yellow-400">Straight</p>
-                    <p className="text-2xl font-bold text-white">3:1</p>
+                  <div className="bg-purple-900/30 rounded-lg p-2 text-center">
+                    <p className="font-bold text-yellow-400 text-xs">Straight</p>
+                    <p className="text-xl font-bold text-white">3:1</p>
                   </div>
-                  <div className="bg-purple-900/30 rounded-lg p-3 text-center">
-                    <p className="font-bold text-yellow-400">Three of a Kind</p>
-                    <p className="text-2xl font-bold text-white">2:1</p>
+                  <div className="bg-purple-900/30 rounded-lg p-2 text-center">
+                    <p className="font-bold text-yellow-400 text-xs">Three of a Kind</p>
+                    <p className="text-xl font-bold text-white">2:1</p>
                   </div>
-                  <div className="bg-purple-900/30 rounded-lg p-3 text-center">
-                    <p className="font-bold text-yellow-400">Two Pair</p>
-                    <p className="text-2xl font-bold text-white">1:1</p>
+                  <div className="bg-purple-900/30 rounded-lg p-2 text-center">
+                    <p className="font-bold text-yellow-400 text-xs">Two Pair</p>
+                    <p className="text-xl font-bold text-white">1:1</p>
                   </div>
-                  <div className="bg-purple-900/30 rounded-lg p-3 text-center">
-                    <p className="font-bold text-yellow-400">Pair</p>
-                    <p className="text-2xl font-bold text-white">1:1</p>
+                  <div className="bg-purple-900/30 rounded-lg p-2 text-center">
+                    <p className="font-bold text-yellow-400 text-xs">Pair</p>
+                    <p className="text-xl font-bold text-white">1:1</p>
                   </div>
-                  <div className="bg-gray-700/50 rounded-lg p-3 text-center">
-                    <p className="font-bold text-gray-400">High Card</p>
-                    <p className="text-2xl font-bold text-gray-500">Push</p>
+                  <div className="bg-gray-700/50 rounded-lg p-2 text-center">
+                    <p className="font-bold text-gray-400 text-xs">High Card</p>
+                    <p className="text-xl font-bold text-gray-500">Push</p>
                   </div>
                 </div>
-                <p className="text-center text-gray-400 text-xs mt-4">
-                  * Dealer must qualify with at least a Pair. If dealer doesn't
-                  qualify, you win ante only.
+                <p className="text-center text-gray-400 text-xs mt-2">
+                  * Dealer must qualify with at least a Pair. If dealer doesn't qualify, you win ante only.
                 </p>
               </motion.div>
             </div>
@@ -813,16 +770,6 @@ export default function PokerPage() {
         onWithdraw={handleWithdrawSubmit}
         balance={balance}
       />
-
-      {/* Waifu Celebration */}
-      {gameResult && (
-        <WaifuCelebration
-          show={showWaifuCelebration}
-          onComplete={() => setShowWaifuCelebration(false)}
-          winAmount={Math.abs(parseFloat(gameResult.profit)).toString()}
-          isWin={gameResult.won && parseFloat(gameResult.profit) > 0}
-        />
-      )}
     </main>
   );
 }
