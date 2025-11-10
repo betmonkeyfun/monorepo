@@ -136,7 +136,7 @@ export default function TokenPage() {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'X-PAYMENT': paymentRequest,
+          'X-PAYMENT': JSON.stringify(paymentRequest),
         },
         body: JSON.stringify({
           amount: buyAmount,
