@@ -1,0 +1,13 @@
+node_modules/
+dist/
+.env
+*.log
+
+# Wallet keys (NEVER commit these!)
+*.json
+!package.json
+!tsconfig.json
+
+# Build files
+*.js
+*.d.ts

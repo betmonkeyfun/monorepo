@@ -6,21 +6,34 @@ import { useAppKitAccount, useAppKitProvider } from '@reown/appkit/react';
 import { PublicKey } from '@solana/web3.js';
 import dynamic from 'next/dynamic';
 import { modal } from '@/contexts/WalletContext';
-import { getPlayerStats, getWalletBalance, createPaymentRequest, withdrawBalance, placeBetWithBalance, placeCustomBetWithBalance } from '@/lib/x402';
+import {
+  getPlayerStats,
+  getWalletBalance,
+  createPaymentRequest,
+  withdrawBalance,
+  placeBetWithBalance,
+  placeCustomBetWithBalance,
+} from '@/lib/x402';
 import NumberPicker from '@/components/roulette/NumberPicker';
 import QuickBets from '@/components/roulette/QuickBets';
-import CoinAnimation, { WinningAnimation, LosingAnimation } from '@/components/roulette/CoinAnimation';
+import CoinAnimation, {
+  WinningAnimation,
+  LosingAnimation,
+} from '@/components/roulette/CoinAnimation';
 import WithdrawModal from '@/components/casino/WithdrawModal';
 
 // Use simple 2D roulette (more stable than 3D)
-const RouletteWheel = dynamic(() => import('@/components/roulette/SimpleRouletteWheel'), {
-  ssr: false,
-  loading: () => (
-    <div className="w-full h-[600px] rounded-2xl bg-gray-900 flex items-center justify-center">
-      <div className="text-white text-xl">Loading Roulette...</div>
-    </div>
-  ),
-});
+const RouletteWheel = dynamic(
+  () => import('@/components/roulette/SimpleRouletteWheel'),
+  {
+    ssr: false,
+    loading: () => (
+      <div className="w-full h-[600px] rounded-2xl bg-gray-900 flex items-center justify-center">
+        <div className="text-white text-xl">Loading Roulette...</div>
+      </div>
+    ),
+  }
+);
 
 export default function RoulettePage() {
   const router = useRouter();
@@ -59,7 +72,11 @@ export default function RoulettePage() {
     }
   };
 
-  const handlePlaceBet = async (betType: string, amount: string, useBalance: boolean) => {
+  const handlePlaceBet = async (
+    betType: string,
+    amount: string,
+    useBalance: boolean
+  ) => {
     if (!address || !isConnected) {
       modal.open();
       return;
@@ -119,24 +136,36 @@ export default function RoulettePage() {
 
       // Get numbers for the bet type
       const getBetNumbers = (type: string): number[] => {
-        const RED_NUMBERS = [1, 3, 5, 7, 9, 12, 14, 16, 18, 19, 21, 23, 25, 27, 30, 32, 34, 36];
-        const BLACK_NUMBERS = [2, 4, 6, 8, 10, 11, 13, 15, 17, 20, 22, 24, 26, 28, 29, 31, 33, 35];
+        const RED_NUMBERS = [
+          1, 3, 5, 7, 9, 12, 14, 16, 18, 19, 21, 23, 25, 27, 30, 32, 34, 36,
+        ];
+        const BLACK_NUMBERS = [
+          2, 4, 6, 8, 10, 11, 13, 15, 17, 20, 22, 24, 26, 28, 29, 31, 33, 35,
+        ];
 
         switch (type) {
-          case 'red': return RED_NUMBERS;
-          case 'black': return BLACK_NUMBERS;
-          case 'even': return Array.from({ length: 18 }, (_, i) => (i + 1) * 2);
-          case 'odd': return Array.from({ length: 18 }, (_, i) => i * 2 + 1);
-          case 'low': return Array.from({ length: 18 }, (_, i) => i + 1);
-          case 'high': return Array.from({ length: 18 }, (_, i) => i + 19);
-          default: return [];
+          case 'red':
+            return RED_NUMBERS;
+          case 'black':
+            return BLACK_NUMBERS;
+          case 'even':
+            return Array.from({ length: 18 }, (_, i) => (i + 1) * 2);
+          case 'odd':
+            return Array.from({ length: 18 }, (_, i) => i * 2 + 1);
+          case 'low':
+            return Array.from({ length: 18 }, (_, i) => i + 1);
+          case 'high':
+            return Array.from({ length: 18 }, (_, i) => i + 19);
+          default:
+            return [];
         }
       };
 
       const numbers = getBetNumbers(betType);
 
       // Send request with payment in X-PAYMENT header
-      const CASINO_API_URL = process.env.NEXT_PUBLIC_CASINO_API_URL || 'http://localhost:3003';
+      const CASINO_API_URL =
+        process.env.NEXT_PUBLIC_CASINO_API_URL || 'http://localhost:3003';
       const response = await fetch(`${CASINO_API_URL}/play/quick`, {
         method: 'POST',
         headers: {
@@ -174,7 +203,11 @@ export default function RoulettePage() {
     }
   };
 
-  const handlePlaceMultiNumberBet = async (numbers: number[], amount: string, useBalance: boolean) => {
+  const handlePlaceMultiNumberBet = async (
+    numbers: number[],
+    amount: string,
+    useBalance: boolean
+  ) => {
     if (!address || !isConnected) {
       modal.open();
       return;
@@ -186,7 +219,7 @@ export default function RoulettePage() {
 
     try {
       // Create bets array - one bet per number
-      const bets = numbers.map(number => ({
+      const bets = numbers.map((number) => ({
         type: 'straight',
         numbers: [number],
         amount: amount,
@@ -241,7 +274,8 @@ export default function RoulettePage() {
       );
 
       // Send request with payment in X-PAYMENT header
-      const CASINO_API_URL = process.env.NEXT_PUBLIC_CASINO_API_URL || 'http://localhost:3003';
+      const CASINO_API_URL =
+        process.env.NEXT_PUBLIC_CASINO_API_URL || 'http://localhost:3003';
       const response = await fetch(`${CASINO_API_URL}/play/custom`, {
         method: 'POST',
         headers: {
@@ -317,8 +351,18 @@ export default function RoulettePage() {
             onClick={() => router.push('/home')}
             className="group flex items-center gap-3 bg-gradient-to-r from-red-600/10 to-yellow-600/10 hover:from-red-600/20 hover:to-yellow-600/20 border border-yellow-500/30 hover:border-yellow-500/50 rounded-lg px-5 py-2.5 transition-all"
           >
-            <svg className="w-5 h-5 text-yellow-400 group-hover:-translate-x-1 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 19l-7-7m0 0l7-7m-7 7h18" />
+            <svg
+              className="w-5 h-5 text-yellow-400 group-hover:-translate-x-1 transition-transform"
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={2}
+                d="M10 19l-7-7m0 0l7-7m-7 7h18"
+              />
             </svg>
             <span className="text-white font-bold text-base">All Games</span>
           </button>
@@ -330,7 +374,9 @@ export default function RoulettePage() {
                   {/* Payment Source Selector */}
                   <select
                     value={useBalance ? 'balance' : 'wallet'}
-                    onChange={(e) => setUseBalance(e.target.value === 'balance')}
+                    onChange={(e) =>
+                      setUseBalance(e.target.value === 'balance')
+                    }
                     disabled={parseFloat(balance) <= 0 && useBalance}
                     className="bg-black/40 border border-yellow-500/30 rounded-lg px-3 py-2 text-white text-sm font-medium cursor-pointer focus:border-yellow-500 focus:outline-none transition-all appearance-none hover:border-yellow-500/50"
                     style={{
@@ -341,8 +387,14 @@ export default function RoulettePage() {
                       paddingRight: '2rem',
                     }}
                   >
-                    <option value="wallet" className="bg-gray-900">New Transaction</option>
-                    <option value="balance" className="bg-gray-900" disabled={parseFloat(balance) <= 0}>
+                    <option value="wallet" className="bg-gray-900">
+                      New Transaction
+                    </option>
+                    <option
+                      value="balance"
+                      className="bg-gray-900"
+                      disabled={parseFloat(balance) <= 0}
+                    >
                       Casino Balance {parseFloat(balance) <= 0 ? '(Empty)' : ''}
                     </option>
                   </select>
@@ -380,13 +432,6 @@ export default function RoulettePage() {
           </div>
         ) : (
           <>
-            {/* Quick Bets - Top */}
-            <QuickBets
-              onPlaceBet={handlePlaceBet}
-              isSpinning={isSpinning}
-              useBalance={useBalance}
-            />
-
             {/* Desktop Layout: Number Picker LEFT | Roulette Wheel RIGHT */}
             <div className="flex flex-col lg:flex-row gap-8 items-start justify-center">
               {/* Number Picker - LEFT on desktop */}
@@ -410,8 +455,12 @@ export default function RoulettePage() {
                 {winningNumber !== null && !isSpinning && (
                   <div className="mt-6 text-center">
                     <div className="inline-block bg-gradient-to-r from-yellow-600 to-yellow-500 rounded-xl px-8 py-3 shadow-2xl border-2 border-yellow-400">
-                      <div className="text-xs text-yellow-100 font-bold uppercase tracking-widest mb-1">Result</div>
-                      <div className="text-5xl font-black text-white">{winningNumber}</div>
+                      <div className="text-xs text-yellow-100 font-bold uppercase tracking-widest mb-1">
+                        Result
+                      </div>
+                      <div className="text-5xl font-black text-white">
+                        {winningNumber}
+                      </div>
                     </div>
                   </div>
                 )}
