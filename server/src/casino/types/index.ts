@@ -123,6 +123,38 @@ export const PlaceBetSchema = z.object({
 export type PlaceBetDto = z.infer<typeof PlaceBetSchema>;
 
 // ============================================================================
+// POKER TYPES
+// ============================================================================
+
+import type { Card, PokerHand } from '../config/poker.config.js';
+
+export interface PokerGame {
+  id: string;
+  userId: string;
+  gameType: 'texas-holdem';
+  playerHole: Card[];        // Player's 2 hole cards
+  dealerHole: Card[];        // Dealer's 2 hole cards
+  community: Card[];         // 5 community cards
+  playerHand: PokerHand;     // Best 5-card hand for player
+  dealerHand: PokerHand;     // Best 5-card hand for dealer
+  betAmount: string;
+  winAmount: string;
+  profit: string;            // Positive = player won, negative = player lost, 0 = tie
+  winner: 'player' | 'dealer' | 'tie';
+  dealerQualified: boolean;  // Did dealer have at least a Pair?
+  payoutType: 'loss' | 'push' | 'ante-only' | 'ante-plus-bonus';
+  status: 'pending' | 'completed' | 'cancelled';
+  createdAt: number;
+  completedAt?: number;
+}
+
+export const PlacePokerBetSchema = z.object({
+  amount: z.string().regex(/^\d+(\.\d+)?$/),
+});
+
+export type PlacePokerBetDto = z.infer<typeof PlacePokerBetSchema>;
+
+// ============================================================================
 // API RESPONSE TYPES
 // ============================================================================
 
