@@ -182,10 +182,10 @@ export default function TokenPage() {
             <h1 className="text-4xl font-bold mb-2 bg-gradient-to-r from-green-400 to-emerald-400 bg-clip-text text-transparent">BMONKEY Token</h1>
             <p className="text-gray-400">Dynamic pricing based on casino reserves</p>
             <div className="mt-2 text-xs text-gray-500">
-              Token Mint: <span className="text-green-400 font-mono">6wfhcne5ARYsuXTLQKQmrZJYuZfTngXur9QXw2YUsKfd</span>
+              Token Mint: <span className="text-green-400 font-mono">2cAHSkSmVunSJ8nCGtw73KYx6EN7kaoBRHC7SpFPKp2h</span>
             </div>
             <div className="text-xs text-gray-500">
-              Agent Wallet: <span className="text-green-400 font-mono">bMEGWAQEeZ26t596yLPYcDRdjfsAamSo8pLf1pXN5rp</span>
+              Agent Wallet: <span className="text-green-400 font-mono">AxzSRrVTM7fGGjqU34vnXm87j2WeSXKBvV9iSCkUXaN8</span>
             </div>
           </div>
           <appkit-button />
