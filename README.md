@@ -3,7 +3,6 @@
 A decentralized casino platform built on Solana blockchain, featuring provably fair gaming, instant payment settlement, and an innovative tokenomics model powered by the x402 payment protocol.
 
 ## Table of Contents
-
 - [Overview](#overview)
 - [Business Model](#business-model)
 - [Architecture](#architecture)
