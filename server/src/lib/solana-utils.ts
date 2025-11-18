@@ -12,6 +12,7 @@ import bs58 from 'bs58';
 export interface SolanaUtilsConfig {
   rpcEndpoint: string;
   rpcSubscriptionsEndpoint?: string;
+  network?: string;
 }
 
 export interface StructuredData {
@@ -41,9 +42,11 @@ export class SolanaUtils {
   private rpc: ReturnType<typeof createSolanaRpc>;
   private rpcSubscriptions?: ReturnType<typeof createSolanaRpcSubscriptions>;
   private rpcUrl: string;
+  private network: string;
 
   constructor(config: SolanaUtilsConfig) {
     this.rpcUrl = config.rpcEndpoint;
+    this.network = config.network ?? 'devnet';
     this.rpc = createSolanaRpc(config.rpcEndpoint);
     if (config.rpcSubscriptionsEndpoint) {
       this.rpcSubscriptions = createSolanaRpcSubscriptions(config.rpcSubscriptionsEndpoint);
@@ -216,7 +219,7 @@ export class SolanaUtils {
       console.log("     - Client's funds -> Merchant (instant settlement)");
       console.log();
 
-      console.log('  Facilitator signing as fee payer and sending to Solana devnet...');
+      console.log(`  Facilitator signing as fee payer and sending to Solana ${this.network}...`);
 
       // Add facilitator's signature (fee payer) to the already client-signed transaction
       transaction.partialSign(facilitatorKeypair);
@@ -236,7 +239,8 @@ export class SolanaUtils {
 
       console.log('  ATOMIC SETTLEMENT COMPLETE!');
       console.log('     Signature:', signature);
-      console.log('     Explorer:', `https://explorer.solana.com/tx/${signature}?cluster=devnet`);
+      const clusterParam = this.network === 'mainnet-beta' ? '' : `?cluster=${this.network}`;
+      console.log('     Explorer:', `https://explorer.solana.com/tx/${signature}${clusterParam}`);
       console.log();
       console.log("  Client's SOL moved to merchant, facilitator paid gas!");
 

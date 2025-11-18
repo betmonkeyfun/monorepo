@@ -44,6 +44,7 @@ export async function getFacilitatorContext(): Promise<FacilitatorContext> {
   const solanaUtils = new SolanaUtils({
     rpcEndpoint: config.solanaRpcUrl,
     rpcSubscriptionsEndpoint: config.solanaWsUrl,
+    network: config.solanaNetwork,
   });
 
   // Initialize nonce database

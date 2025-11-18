@@ -16,6 +16,7 @@ export interface SettleRouteContext {
   simulateTransactions: boolean;
   config: {
     facilitatorPrivateKey: string;
+    solanaNetwork: string;
   };
 }
 
@@ -75,7 +76,7 @@ export function settlePaymentRoute(context: SettleRouteContext) {
       const requiredAmount = BigInt(nonceDetails.amount);
 
       if (!context.simulateTransactions) {
-        // Check SOL balances in devnet mode
+        // Check SOL balances
         const clientBalance = await context.solanaUtils.getSOLBalance(nonceDetails.clientPublicKey);
 
         console.log('SOL Balance check:', {
@@ -121,8 +122,9 @@ export function settlePaymentRoute(context: SettleRouteContext) {
             paymentReq.signedTransaction // client-signed transaction
           );
           console.log('ATOMIC SETTLEMENT complete!');
+          const clusterParam = context.config.solanaNetwork === 'mainnet-beta' ? '' : `?cluster=${context.config.solanaNetwork}`;
           console.log(
-            `   View on Solana Explorer: https://explorer.solana.com/tx/${transactionSignature}?cluster=devnet`
+            `   View on Solana Explorer: https://explorer.solana.com/tx/${transactionSignature}${clusterParam}`
           );
         } catch (error) {
           console.error('Sponsored transaction failed:', error);

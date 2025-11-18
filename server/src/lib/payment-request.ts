@@ -13,6 +13,7 @@ export interface AuthorizationPayloadData {
   nonce: string;
   timestamp: number;
   expiry: number;
+  network?: string;
 }
 
 export interface StructuredData {
@@ -46,6 +47,7 @@ export class AuthorizationPayload {
   nonce: string;
   timestamp: number;
   expiry: number;
+  network: string;
 
   constructor(data: AuthorizationPayloadData) {
     this.amount = data.amount;
@@ -55,6 +57,7 @@ export class AuthorizationPayload {
     this.nonce = data.nonce;
     this.timestamp = data.timestamp;
     this.expiry = data.expiry;
+    this.network = data.network ?? 'devnet';
   }
 
   /**
@@ -67,6 +70,7 @@ export class AuthorizationPayload {
     resourceUrl: string;
     nonce: string;
     expiryHours?: number;
+    network?: string;
   }): AuthorizationPayload {
     const timestamp = Date.now();
     const expiryHours = params.expiryHours ?? 24;
@@ -78,6 +82,7 @@ export class AuthorizationPayload {
       resourceId: params.resourceId,
       resourceUrl: params.resourceUrl,
       nonce: params.nonce,
+      network: params.network,
       timestamp,
       expiry,
     });
@@ -114,7 +119,7 @@ export class AuthorizationPayload {
       domain: {
         name: 'x402-solana-protocol',
         version: '1',
-        chainId: 'devnet',
+        chainId: this.network,
         verifyingContract: 'x402-sol',
       },
       types: {
@@ -267,6 +272,7 @@ export class PaymentRequest {
     signature: string;
     clientPublicKey: string;
     expiryHours?: number;
+    network?: string;
   }): PaymentRequest {
     const timestamp = Date.now();
     const expiryHours = params.expiryHours ?? 24;
@@ -280,6 +286,7 @@ export class PaymentRequest {
       nonce: params.nonce,
       timestamp,
       expiry,
+      network: params.network,
     });
 
     return new PaymentRequest({

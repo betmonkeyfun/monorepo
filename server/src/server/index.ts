@@ -92,7 +92,7 @@ app.get('/api/premium-data', premiumRouteMw.middleware, (req, res) => {
   res.set({
     'x-payment-processed': 'true',
     'x-payment-method': 'solana-sol',
-    'x-payment-network': 'devnet',
+    'x-payment-network': context.config.solanaNetwork || 'devnet',
     'x-payment-transaction': req.payment?.transactionSignature,
   });
 
